@@ -19,7 +19,7 @@ contract AnchorEthFactory is Ownable {
     IShuttleAsset public terrausd;
     IShuttleAsset public anchorust;
 
-    boolean public isMigrated;
+    boolean public isMigrated = false;
 
     constructor(IShuttleAsset _terrausd, IShuttleAsset _anchorust) public {
         terrausd = _terrausd;
@@ -32,6 +32,7 @@ contract AnchorEthFactory is Ownable {
         for (uint i = 0; i < ContractsList.length; i++) {
             IAnchorAccount(ContractsList[i]).transferOwnership(newContract);
         }
+        isMigrated = true;
     }
 
     function setUSTAddess(address _terrausd) onlyOwner {
@@ -42,11 +43,11 @@ contract AnchorEthFactory is Ownable {
         anchorust = _anchorust;
     }
 
-    function setAddress(address eth, bytes32 terra) onlyOwner {
+    function assignTerraAddress(address eth, bytes32 terra) onlyOwner {
         AddressMap[eth] = terra;
     }
 
-    function initDeposit(uint256 amount, bytes32 to) public {
+    function initDepositStable(uint256 amount, bytes32 to) public {
         // check if msg.sender already has corresponding subcontract
         if (bytes(ContractMap[msg.sender]).length > 0) {
             // execute subcontract
@@ -58,7 +59,7 @@ contract AnchorEthFactory is Ownable {
         }
     }
 
-    function finishDeposit(uint256 amount) public {
+    function finishDepositStable(uint256 amount) public {
         // check if msg.sender already has corresponding subcontract
         if (bytes(ContractMap[msg.sender]).length > 0) {
             // execute subcontract
@@ -70,7 +71,7 @@ contract AnchorEthFactory is Ownable {
         }
     }
 
-    function initRedemption(uint256 amount, bytes32 to) public {
+    function initRedeemStable(uint256 amount, bytes32 to) public {
         // check if msg.sender already has corresponding subcontract
         if (bytes(ContractMap[msg.sender]).length > 0) {
             // execute subcontract
@@ -82,7 +83,7 @@ contract AnchorEthFactory is Ownable {
         }
     }
 
-    function finishRedemption(uint256 amount) public {
+    function finishRedeemStable(uint256 amount) public {
         // check if msg.sender already has corresponding subcontract
         if (bytes(ContractMap[msg.sender]).length > 0) {
             // execute subcontract
@@ -152,7 +153,7 @@ contract AnchorAccount is Ownable {
         _;
     }
 
-    function initDeposit(uint256 amount, bytes32 to) public onlyAuthSender checkDepositInit {        
+    function initDepositStable(uint256 amount, bytes32 to) public onlyAuthSender checkDepositInit {        
         // transfer UST to contract address
         terrausd.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -167,7 +168,7 @@ contract AnchorAccount is Ownable {
         emit InitDeposit(tx.origin, amount, to);
     }
 
-    function finishDeposit() public onlyAuthSender checkDepositFinish {
+    function finishDepositStable() public onlyAuthSender checkDepositFinish {
         // transfer aUST to msg.sender
         // call will fail if aUST was not returned from Shuttle/Anchorbot/Terra contracts
         require(anchorust.balanceOf(address(this)) > 0, "AnchorAccount: finish deposit operation: not enough aust");
@@ -180,7 +181,7 @@ contract AnchorAccount is Ownable {
         emit FinishDeposit(tx.origin);
     }
 
-    function initRedemption(uint256 amount, bytes32 to) public onlyAuthSender checkRedemptionInit {
+    function initRedeemStable(uint256 amount, bytes32 to) public onlyAuthSender checkRedemptionInit {
         // transfer aUST to contract address
         anchorust.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -195,7 +196,7 @@ contract AnchorAccount is Ownable {
         emit InitRedemption(tx.origin, amount, to);
     }
 
-    function finishRedemption() public onlyAuthSender checkRedemptionFinish {
+    function finishRedeemStable() public onlyAuthSender checkRedemptionFinish {
         // transfer UST to msg.sender
         // call will fail if aUST was not returned from Shuttle/Anchorbot/Terra contracts
         require(terrausd.balanceOf(address(this)) > 0, "AnchorAccount: finish redemption operation: not enough ust");
