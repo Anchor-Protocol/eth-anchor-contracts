@@ -13,7 +13,7 @@ contract AnchorEthFactory is Ownable {
     using SafeERC20 for IERC20;
 
     mapping(address => address) public ContractMap;
-    mapping(address => bytes) public AddressMap; // eth address => bech32 decoded terra address
+    mapping(address => bytes32) public AddressMap; // eth address => bech32 decoded terra address
 
     address[] private ContractsList;
     IShuttleAsset public terrausd;
@@ -40,6 +40,10 @@ contract AnchorEthFactory is Ownable {
 
     function setaUSTAddress(address _anchorust) onlyOwner {
         anchorust = _anchorust;
+    }
+
+    function setAddress(address eth, bytes32 terra) onlyOwner {
+        AddressMap[eth] = terra;
     }
 
     function initDeposit(uint256 amount, bytes32 to) public {
@@ -163,16 +167,17 @@ contract AnchorAccount is Ownable {
         emit InitDeposit(tx.origin, amount, to);
     }
 
-    function finishDeposit(uint256 amount) public onlyAuthSender checkDepositFinish {
+    function finishDeposit() public onlyAuthSender checkDepositFinish {
         // transfer aUST to msg.sender
         // call will fail if aUST was not returned from Shuttle/Anchorbot/Terra contracts
-        anchorust.safeTransfer(msg.sender, amount);
+        require(anchorust.balanceOf(address(this)) > 0, "AnchorAccount: finish deposit operation: not enough aust");
+        anchorust.safeTransfer(msg.sender, anchorust.balanceOf(address(this)));
 
         // set DepositFlag to false
         DepositFlag = false;
 
         // emit finishdeposit event
-        emit FinishDeposit(tx.origin, amount);
+        emit FinishDeposit(tx.origin);
     }
 
     function initRedemption(uint256 amount, bytes32 to) public onlyAuthSender checkRedemptionInit {
@@ -190,21 +195,22 @@ contract AnchorAccount is Ownable {
         emit InitRedemption(tx.origin, amount, to);
     }
 
-    function finishRedemption(uint256 amount) public onlyAuthSender checkRedemptionFinish {
+    function finishRedemption() public onlyAuthSender checkRedemptionFinish {
         // transfer UST to msg.sender
         // call will fail if aUST was not returned from Shuttle/Anchorbot/Terra contracts
-        terrausd.safeTransfer(msg.sender, amount);
+        require(terrausd.balanceOf(address(this)) > 0, "AnchorAccount: finish redemption operation: not enough ust");
+        terrausd.safeTransfer(msg.sender, terrausd.balanceOf(address(this)));
         
         // set RedemptionFlag to false
         RedemptionFlag = false;
 
         // emit finishredemption event
-        emit FinishRedemption(tx.origin, amount);
+        emit FinishRedemption(tx.origin);
     }
 
     // Events
     event InitDeposit(address sender, uint256 amount, bytes32 to);
-    event FinishDeposit(address sender, uint256 amount);
+    event FinishDeposit(address sender);
     event InitRedemption(address sender, uint256 amount, bytes32 to);
-    event FinishRedemption(address sender, uint256 amount);
+    event FinishRedemption(address sender);
 }
