@@ -51,7 +51,7 @@ contract AnchorEthFactory is Ownable {
         // check if msg.sender already has corresponding subcontract
         if (bytes(ContractMap[msg.sender]).length > 0) {
             // execute subcontract
-            IAnchorAccount(ContractMap[msg.sender]).initDeposit(amount, to);
+            IAnchorAccount(ContractMap[msg.sender]).initDepositStable(amount, to);
         }
         else {
             // create new contract
@@ -63,7 +63,7 @@ contract AnchorEthFactory is Ownable {
         // check if msg.sender already has corresponding subcontract
         if (bytes(ContractMap[msg.sender]).length > 0) {
             // execute subcontract
-            IAnchorAccount(ContractMap[msg.sender]).finshDeposit(amount);
+            IAnchorAccount(ContractMap[msg.sender]).finshDepositStable(amount);
         }
         else {
             // create new contract
@@ -75,7 +75,7 @@ contract AnchorEthFactory is Ownable {
         // check if msg.sender already has corresponding subcontract
         if (bytes(ContractMap[msg.sender]).length > 0) {
             // execute subcontract
-            IAnchorAccount(ContractMap[msg.sender]).initRedemption(amount, to);
+            IAnchorAccount(ContractMap[msg.sender]).initRedeemStable(amount, to);
         }
         else {
             // create new contract
@@ -87,7 +87,7 @@ contract AnchorEthFactory is Ownable {
         // check if msg.sender already has corresponding subcontract
         if (bytes(ContractMap[msg.sender]).length > 0) {
             // execute subcontract
-            IAnchorAccount(ContractMap[msg.sender]).finishRedemption(amount);
+            IAnchorAccount(ContractMap[msg.sender]).finishRedeemStable(amount);
         }
         else {
             // create new contract
