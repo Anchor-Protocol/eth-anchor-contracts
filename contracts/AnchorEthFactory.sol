@@ -130,7 +130,7 @@ contract AnchorAccount is Ownable {
     }
 
     modifier checkFinish() {
-        require(Flag == true, "AnchorAccount: finish operation: init not called yet");
+        require(ActionFlag == true, "AnchorAccount: finish operation: init not called yet");
         _;
     }
 
