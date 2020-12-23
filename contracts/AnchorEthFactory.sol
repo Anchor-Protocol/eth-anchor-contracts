@@ -13,7 +13,6 @@ contract AnchorEthFactory is Ownable {
     using SafeERC20 for IERC20;
 
     mapping(address => address) public ContractMap;
-    mapping(address => bytes32) public AddressMap; // eth address => bech32 decoded terra address
 
     address[] private ContractsList;
     IShuttleAsset public terrausd;
@@ -43,15 +42,11 @@ contract AnchorEthFactory is Ownable {
         anchorust = _anchorust;
     }
 
-    function assignTerraAddress(address eth, bytes32 terra) onlyOwner {
-        AddressMap[eth] = terra;
-    }
-
-    function initDepositStable(uint256 amount, bytes32 to) public {
+    function initDepositStable(uint256 amount) public {
         // check if msg.sender already has corresponding subcontract
         if (bytes(ContractMap[msg.sender]).length > 0) {
             // execute subcontract
-            IAnchorAccount(ContractMap[msg.sender]).initDepositStable(amount, to);
+            IAnchorAccount(ContractMap[msg.sender]).initDepositStable(amount);
         }
         else {
             // create new contract
@@ -59,11 +54,11 @@ contract AnchorEthFactory is Ownable {
         }
     }
 
-    function finishDepositStable(uint256 amount) public {
+    function finishDepositStable() public {
         // check if msg.sender already has corresponding subcontract
         if (bytes(ContractMap[msg.sender]).length > 0) {
             // execute subcontract
-            IAnchorAccount(ContractMap[msg.sender]).finshDepositStable(amount);
+            IAnchorAccount(ContractMap[msg.sender]).finshDepositStable();
         }
         else {
             // create new contract
@@ -71,11 +66,11 @@ contract AnchorEthFactory is Ownable {
         }
     }
 
-    function initRedeemStable(uint256 amount, bytes32 to) public {
+    function initRedeemStable(uint256 amount) public {
         // check if msg.sender already has corresponding subcontract
         if (bytes(ContractMap[msg.sender]).length > 0) {
             // execute subcontract
-            IAnchorAccount(ContractMap[msg.sender]).initRedeemStable(amount, to);
+            IAnchorAccount(ContractMap[msg.sender]).initRedeemStable(amount);
         }
         else {
             // create new contract
@@ -83,11 +78,11 @@ contract AnchorEthFactory is Ownable {
         }
     }
 
-    function finishRedeemStable(uint256 amount) public {
+    function finishRedeemStable() public {
         // check if msg.sender already has corresponding subcontract
         if (bytes(ContractMap[msg.sender]).length > 0) {
             // execute subcontract
-            IAnchorAccount(ContractMap[msg.sender]).finishRedeemStable(amount);
+            IAnchorAccount(ContractMap[msg.sender]).finishRedeemStable();
         }
         else {
             // create new contract
@@ -95,7 +90,7 @@ contract AnchorEthFactory is Ownable {
         }
     }
 
-    function deployContract() public {
+    function deployContract() onlyOwner {
         // create new contract
         AnchorAccount accountContract = new AnchorAccount(address(this), msg.sender, terrausd, anchorust);
         // append to map
@@ -118,33 +113,24 @@ contract AnchorAccount is Ownable {
 
     address public anchorFactory;
     address public walletAddress;
-    bool private DepositFlag = false;
-    bool private RedemptionFlag = false;
+    bytes32 public terraAddress;
+    bool private ActionFlag = false;
 
-    constructor(address _anchorFactory, address _walletAddress, IShuttleAsset _terrausd, IShuttleAsset _anchorust) public {
+    constructor(address _anchorFactory, address _walletAddress, bytes32 _terraAddress, IShuttleAsset _terrausd, IShuttleAsset _anchorust) public {
         anchorFactory = _anchorFactory;
         walletAddress = _walletAddress;
+        terraAddress = _terraAddress;
         terrausd = _terrausd;
         anchorust = _anchorust;
     }
 
-    modifier checkDepositInit() {
-        require(DepositFlag == false, "AnchorAccount: init deposit operation: init already called");
+    modifier checkInit() {
+        require(ActionFlag == false, "AnchorAccount: init operation: init already called");
         _;
     }
 
-    modifier checkDepositFinish() {
-        require(DepositFlag == true, "AnchorAccount: finish deposit operation: init not called yet");
-        _;
-    }
-
-    modifier checkRedemptionInit() {
-        require(RedemptionFlag == false, "AnchorAccount: init redemption operation: init already called");
-        _;
-    }
-
-    modifier checkRedemptionFinish() {
-        require(RedemptionFlag == true, "AnchorAccount: finish redemption operation: init not called yet");
+    modifier checkFinish() {
+        require(Flag == true, "AnchorAccount: finish operation: init not called yet");
         _;
     }
 
@@ -153,57 +139,55 @@ contract AnchorAccount is Ownable {
         _;
     }
 
-    function initDepositStable(uint256 amount, bytes32 to) public onlyAuthSender checkDepositInit {        
+    function initDepositStable(uint256 amount) public onlyAuthSender checkInit {        
         // transfer UST to contract address
         terrausd.safeTransferFrom(msg.sender, address(this), amount);
 
         // transfer UST to Shuttle
-        // TODO: Shuttle may fail - is an asynchronous status check mechanism possible?
-        terrausd.burn(amount, to);
+        terrausd.burn(amount, terraAddress);
 
-        // set DepositFlag to true
-        DepositFlag = true;
+        // set ActionFlag to true
+        ActionFlag = true;
 
         // emit initdeposit event
-        emit InitDeposit(tx.origin, amount, to);
+        emit InitDeposit(tx.origin, amount, terraAddress);
     }
 
-    function finishDepositStable() public onlyAuthSender checkDepositFinish {
+    function finishDepositStable() public onlyAuthSender checkFinish {
         // transfer aUST to msg.sender
         // call will fail if aUST was not returned from Shuttle/Anchorbot/Terra contracts
         require(anchorust.balanceOf(address(this)) > 0, "AnchorAccount: finish deposit operation: not enough aust");
         anchorust.safeTransfer(msg.sender, anchorust.balanceOf(address(this)));
 
-        // set DepositFlag to false
-        DepositFlag = false;
+        // set ActionFlag to false
+        ActionFlag = false;
 
         // emit finishdeposit event
         emit FinishDeposit(tx.origin);
     }
 
-    function initRedeemStable(uint256 amount, bytes32 to) public onlyAuthSender checkRedemptionInit {
+    function initRedeemStable(uint256 amount) public onlyAuthSender checkInit {
         // transfer aUST to contract address
         anchorust.safeTransferFrom(msg.sender, address(this), amount);
 
         // transfer aUST to Shuttle
-        // TODO: Shuttle may fail - is an asynchronous status check mechanism possible?
-        anchorust.burn(amount, to);
+        anchorust.burn(amount, terraAddress);
 
-        // set RedemptionFlag to true
-        RedemptionFlag = true;
+        // set ActionFlag to true
+        ActionFlag = true;
 
         // emit initredemption event
-        emit InitRedemption(tx.origin, amount, to);
+        emit InitRedemption(tx.origin, amount, terraAddress);
     }
 
-    function finishRedeemStable() public onlyAuthSender checkRedemptionFinish {
+    function finishRedeemStable() public onlyAuthSender checkFinish {
         // transfer UST to msg.sender
         // call will fail if aUST was not returned from Shuttle/Anchorbot/Terra contracts
         require(terrausd.balanceOf(address(this)) > 0, "AnchorAccount: finish redemption operation: not enough ust");
         terrausd.safeTransfer(msg.sender, terrausd.balanceOf(address(this)));
         
-        // set RedemptionFlag to false
-        RedemptionFlag = false;
+        // set ActionFlag to false
+        ActionFlag = false;
 
         // emit finishredemption event
         emit FinishRedemption(tx.origin);
