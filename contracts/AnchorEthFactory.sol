@@ -26,13 +26,9 @@ contract AnchorEthFactory is Ownable {
         anchorust = IShuttleAsset(_anchorust);
     }
 
-    modifier contractExists() {
-        require(ContractMap[tx.origin] != address(0x0), "AnchorEthFactory: subcontract does not exist");
-        _;
-    }
-
     // **MUST** be called after calling openzeppelin upgradable_contract_deploy_proxy
     function migrate(address newContract) public onlyOwner {
+        require(isMigrated == false, "AnchorEthFactory: contract already migrated");
         // migrate subcontract ownership to new contract
         for (uint i = 0; i < ContractsList.length; i++) {
             ContractsList[i].transferOwnership(newContract);
@@ -48,22 +44,6 @@ contract AnchorEthFactory is Ownable {
         anchorust = _anchorust;
     }
 
-    function initDepositStable(uint256 amount) public contractExists {
-        IAnchorAccount(ContractMap[msg.sender]).initDepositStable(amount);
-    }
-
-    function finishDepositStable() public contractExists {
-        IAnchorAccount(ContractMap[msg.sender]).finishDepositStable();
-    }
-
-    function initRedeemStable(uint256 amount) public contractExists {
-        IAnchorAccount(ContractMap[msg.sender]).initRedeemStable(amount);
-    }
-
-    function finishRedeemStable() public contractExists {
-        IAnchorAccount(ContractMap[msg.sender]).finishRedeemStable();
-    }
-
     function deployContract() onlyOwner public {
         // create new contract
         AnchorAccount accountContract = new AnchorAccount(address(this), msg.sender, terrausd, anchorust);
@@ -74,11 +54,14 @@ contract AnchorEthFactory is Ownable {
         emit ContractDeployed(address(accountContract), msg.sender);
     }
 
+    function reportFailure() public onlyOwner {
+        IAnchorAccount(ContractMap[msg.sender]).reportFailure();
+    }
+
     // Events
     event ContractDeployed(address account, address sender);
 }
 
-// SPDX-License-Identifier: UNLICENSED
 // AnchorAccount.sol: subcontract generated per wallet, defining all relevant wrapping functions
 
 contract AnchorAccount is Ownable {
@@ -111,7 +94,7 @@ contract AnchorAccount is Ownable {
     }
 
     modifier onlyAuthSender() {
-        require(walletAddress == tx.origin, "AnchorAccount: unauthorized sender");
+        require(walletAddress == msg.sender, "AnchorAccount: unauthorized sender");
         _;
     }
 
@@ -124,7 +107,8 @@ contract AnchorAccount is Ownable {
         terraAddress = _terraAddress;
     }
 
-    function initDepositStable(uint256 amount) public onlyAuthSender checkInit terraAddressSet {        
+    function initDepositStable(uint256 amount) public onlyAuthSender checkInit terraAddressSet {    
+        require(amount > 0, "AnchorAccount: amount must be greater than 0");    
         // transfer UST to contract address
         terrausd.transferFrom(msg.sender, address(this), amount);
 
@@ -135,7 +119,7 @@ contract AnchorAccount is Ownable {
         ActionFlag = true;
 
         // emit initdeposit event
-        emit InitDeposit(tx.origin, amount, terraAddress);
+        emit InitDeposit(msg.sender, amount, terraAddress);
     }
 
     function finishDepositStable() public onlyAuthSender checkFinish terraAddressSet {
@@ -148,10 +132,11 @@ contract AnchorAccount is Ownable {
         ActionFlag = false;
 
         // emit finishdeposit event
-        emit FinishDeposit(tx.origin);
+        emit FinishDeposit(msg.sender);
     }
 
     function initRedeemStable(uint256 amount) public onlyAuthSender checkInit terraAddressSet {
+        require(amount > 0, "AnchorAccount: amount must be greater than 0");
         // transfer aUST to contract address
         anchorust.transferFrom(msg.sender, address(this), amount);
 
@@ -162,7 +147,7 @@ contract AnchorAccount is Ownable {
         ActionFlag = true;
 
         // emit initredemption event
-        emit InitRedemption(tx.origin, amount, terraAddress);
+        emit InitRedemption(msg.sender, amount, terraAddress);
     }
 
     function finishRedeemStable() public onlyAuthSender checkFinish terraAddressSet {
@@ -175,7 +160,14 @@ contract AnchorAccount is Ownable {
         ActionFlag = false;
 
         // emit finishredemption event
-        emit FinishRedemption(tx.origin);
+        emit FinishRedemption(msg.sender);
+    }
+
+    function reportFailure() public onlyOwner checkInit {
+        // contract owner can force revert init() txs in case of aUST redemption failure
+        // resets ActionFlag and return deposited funds to msg.sender
+        require(terrausd.balanceOf(address(this)) == 0 && ActionFlag == true, "AnchorAccount: call finish first");
+        ActionFlag = false;
     }
 
     // Events

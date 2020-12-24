@@ -8,4 +8,5 @@ interface IAnchorAccount {
     function initRedeemStable(uint256 amount) external;
     function finishRedeemStable() external;
     function transferOwnership(address newOwner) external;
+    function reportFailure() external;
 }
