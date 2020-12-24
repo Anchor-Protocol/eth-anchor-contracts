@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: UNLICENSED
 // AnchorEthFactory.sol: Factory contract for all account contracts
 pragma solidity >=0.6.0 <0.8.0;
 
@@ -5,8 +6,8 @@ import '@openzeppelin/contracts/math/SafeMath.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
-import '../interfaces/IShuttleAsset.sol';
-import '../interfaces/IAnchorAccount.sol';
+import './interfaces/IShuttleAsset.sol';
+import './interfaces/IAnchorAccount.sol';
 
 contract AnchorEthFactory is Ownable {
     using SafeMath for uint256;
@@ -14,95 +15,71 @@ contract AnchorEthFactory is Ownable {
 
     mapping(address => address) public ContractMap;
 
-    address[] private ContractsList;
+    AnchorAccount[] private ContractsList;
     IShuttleAsset public terrausd;
     IShuttleAsset public anchorust;
 
-    boolean public isMigrated = false;
+    bool public isMigrated = false;
 
-    constructor(IShuttleAsset _terrausd, IShuttleAsset _anchorust) public {
-        terrausd = _terrausd;
-        anchorust = _anchorust;
+    constructor(address _terrausd, address _anchorust) {
+        terrausd = IShuttleAsset(_terrausd);
+        anchorust = IShuttleAsset(_anchorust);
+    }
+
+    modifier contractExists() {
+        require(ContractMap[tx.origin] != address(0x0), "AnchorEthFactory: subcontract does not exist");
+        _;
     }
 
     // **MUST** be called after calling openzeppelin upgradable_contract_deploy_proxy
-    function migrate(address newContract) onlyOwner {
+    function migrate(address newContract) public onlyOwner {
         // migrate subcontract ownership to new contract
         for (uint i = 0; i < ContractsList.length; i++) {
-            IAnchorAccount(ContractsList[i]).transferOwnership(newContract);
+            ContractsList[i].transferOwnership(newContract);
         }
         isMigrated = true;
     }
 
-    function setUSTAddess(address _terrausd) onlyOwner {
+    function setUSTAddess(IShuttleAsset _terrausd) public onlyOwner {
         terrausd = _terrausd;
     }
 
-    function setaUSTAddress(address _anchorust) onlyOwner {
+    function setaUSTAddress(IShuttleAsset _anchorust) public onlyOwner {
         anchorust = _anchorust;
     }
 
-    function initDepositStable(uint256 amount) public {
-        // check if msg.sender already has corresponding subcontract
-        if (bytes(ContractMap[msg.sender]).length > 0) {
-            // execute subcontract
-            IAnchorAccount(ContractMap[msg.sender]).initDepositStable(amount);
-        }
-        else {
-            // create new contract
-            deployContract();
-        }
+    function initDepositStable(uint256 amount) public contractExists {
+        IAnchorAccount(ContractMap[msg.sender]).initDepositStable(amount);
     }
 
-    function finishDepositStable() public {
-        // check if msg.sender already has corresponding subcontract
-        if (bytes(ContractMap[msg.sender]).length > 0) {
-            // execute subcontract
-            IAnchorAccount(ContractMap[msg.sender]).finshDepositStable();
-        }
-        else {
-            // create new contract
-            deployContract();
-        }
+    function finishDepositStable() public contractExists {
+        IAnchorAccount(ContractMap[msg.sender]).finishDepositStable();
     }
 
-    function initRedeemStable(uint256 amount) public {
-        // check if msg.sender already has corresponding subcontract
-        if (bytes(ContractMap[msg.sender]).length > 0) {
-            // execute subcontract
-            IAnchorAccount(ContractMap[msg.sender]).initRedeemStable(amount);
-        }
-        else {
-            // create new contract
-            deployContract();
-        }
+    function initRedeemStable(uint256 amount) public contractExists {
+        IAnchorAccount(ContractMap[msg.sender]).initRedeemStable(amount);
     }
 
-    function finishRedeemStable() public {
-        // check if msg.sender already has corresponding subcontract
-        if (bytes(ContractMap[msg.sender]).length > 0) {
-            // execute subcontract
-            IAnchorAccount(ContractMap[msg.sender]).finishRedeemStable();
-        }
-        else {
-            // create new contract
-            deployContract();
-        }
+    function finishRedeemStable() public contractExists {
+        IAnchorAccount(ContractMap[msg.sender]).finishRedeemStable();
     }
 
-    function deployContract() onlyOwner {
+    function deployContract() onlyOwner public {
         // create new contract
         AnchorAccount accountContract = new AnchorAccount(address(this), msg.sender, terrausd, anchorust);
         // append to map
-        ContractMap[msg.sender] = accountContract;
+        ContractMap[msg.sender] = address(accountContract);
         ContractsList.push(accountContract);
         // emit contractdeployed event
-        emit ContractDeployed(accountContract, msg.sender);
+        emit ContractDeployed(address(accountContract), msg.sender);
     }
 
     // Events
     event ContractDeployed(address account, address sender);
 }
+
+// SPDX-License-Identifier: UNLICENSED
+// AnchorAccount.sol: subcontract generated per wallet, defining all relevant wrapping functions
 
 contract AnchorAccount is Ownable {
     using SafeMath for uint256;
@@ -116,10 +93,9 @@ contract AnchorAccount is Ownable {
     bytes32 public terraAddress;
     bool private ActionFlag = false;
 
-    constructor(address _anchorFactory, address _walletAddress, bytes32 _terraAddress, IShuttleAsset _terrausd, IShuttleAsset _anchorust) public {
+    constructor(address _anchorFactory, address _walletAddress, IShuttleAsset _terrausd, IShuttleAsset _anchorust) {
         anchorFactory = _anchorFactory;
         walletAddress = _walletAddress;
-        terraAddress = _terraAddress;
         terrausd = _terrausd;
         anchorust = _anchorust;
     }
@@ -139,9 +115,18 @@ contract AnchorAccount is Ownable {
         _;
     }
 
-    function initDepositStable(uint256 amount) public onlyAuthSender checkInit {        
+    modifier terraAddressSet() {
+        require(terraAddress[0] != 0, "AnchorAccount: Terra address not initialized");
+        _;
+    }
+
+    function setTerraAddress(bytes32 _terraAddress) public onlyAuthSender {
+        terraAddress = _terraAddress;
+    }
+
+    function initDepositStable(uint256 amount) public onlyAuthSender checkInit terraAddressSet {        
         // transfer UST to contract address
-        terrausd.safeTransferFrom(msg.sender, address(this), amount);
+        terrausd.transferFrom(msg.sender, address(this), amount);
 
         // transfer UST to Shuttle
         terrausd.burn(amount, terraAddress);
@@ -153,11 +138,11 @@ contract AnchorAccount is Ownable {
         emit InitDeposit(tx.origin, amount, terraAddress);
     }
 
-    function finishDepositStable() public onlyAuthSender checkFinish {
+    function finishDepositStable() public onlyAuthSender checkFinish terraAddressSet {
         // transfer aUST to msg.sender
         // call will fail if aUST was not returned from Shuttle/Anchorbot/Terra contracts
         require(anchorust.balanceOf(address(this)) > 0, "AnchorAccount: finish deposit operation: not enough aust");
-        anchorust.safeTransfer(msg.sender, anchorust.balanceOf(address(this)));
+        anchorust.transfer(msg.sender, anchorust.balanceOf(address(this)));
 
         // set ActionFlag to false
         ActionFlag = false;
@@ -166,9 +151,9 @@ contract AnchorAccount is Ownable {
         emit FinishDeposit(tx.origin);
     }
 
-    function initRedeemStable(uint256 amount) public onlyAuthSender checkInit {
+    function initRedeemStable(uint256 amount) public onlyAuthSender checkInit terraAddressSet {
         // transfer aUST to contract address
-        anchorust.safeTransferFrom(msg.sender, address(this), amount);
+        anchorust.transferFrom(msg.sender, address(this), amount);
 
         // transfer aUST to Shuttle
         anchorust.burn(amount, terraAddress);
@@ -180,11 +165,11 @@ contract AnchorAccount is Ownable {
         emit InitRedemption(tx.origin, amount, terraAddress);
     }
 
-    function finishRedeemStable() public onlyAuthSender checkFinish {
+    function finishRedeemStable() public onlyAuthSender checkFinish terraAddressSet {
         // transfer UST to msg.sender
         // call will fail if aUST was not returned from Shuttle/Anchorbot/Terra contracts
         require(terrausd.balanceOf(address(this)) > 0, "AnchorAccount: finish redemption operation: not enough ust");
-        terrausd.safeTransfer(msg.sender, terrausd.balanceOf(address(this)));
+        terrausd.transfer(msg.sender, terrausd.balanceOf(address(this)));
         
         // set ActionFlag to false
         ActionFlag = false;

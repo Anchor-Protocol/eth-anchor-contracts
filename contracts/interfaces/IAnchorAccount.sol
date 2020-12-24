@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: UNLICENSED
 // IAnchorAccount.sol: Interface for wrapping around Anchor deposit subcontracts
 pragma solidity >=0.6.0 <0.8.0;
 
@@ -6,5 +7,5 @@ interface IAnchorAccount {
     function finishDepositStable() external;
     function initRedeemStable(uint256 amount) external;
     function finishRedeemStable() external;
-    function transferOwnership(address newOwner) external virtual;
+    function transferOwnership(address newOwner) external;
 }

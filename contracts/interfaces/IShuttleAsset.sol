@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: UNLICENSED
 // IWrappedToken.sol: Interface for wrapped Terra assets
 pragma solidity ^0.7.0;
 
