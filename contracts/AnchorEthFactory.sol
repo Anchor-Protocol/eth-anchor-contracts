@@ -36,12 +36,18 @@ contract AnchorEthFactory is Ownable {
         isMigrated = true;
     }
 
+    // setters
     function setUSTAddess(IShuttleAsset _terrausd) public onlyOwner {
         terrausd = _terrausd;
     }
 
     function setaUSTAddress(IShuttleAsset _anchorust) public onlyOwner {
         anchorust = _anchorust;
+    }
+
+    // getters
+    function getContractAddress(address _sender) public returns (address) {
+        return ContractMap[_sender];
     }
 
     function deployContract() onlyOwner public {
@@ -76,11 +82,11 @@ contract AnchorAccount is Ownable {
     bytes32 public terraAddress;
     bool private ActionFlag = false;
 
-    constructor(address _anchorFactory, address _walletAddress, IShuttleAsset _terrausd, IShuttleAsset _anchorust) {
+    constructor(address _anchorFactory, address _walletAddress, address _terrausd, address _anchorust) {
         anchorFactory = _anchorFactory;
         walletAddress = _walletAddress;
-        terrausd = _terrausd;
-        anchorust = _anchorust;
+        terrausd = IShuttleAsset(_terrausd);
+        anchorust = IShuttleAsset(_anchorust);
     }
 
     modifier checkInit() {
@@ -105,6 +111,10 @@ contract AnchorAccount is Ownable {
 
     function setTerraAddress(bytes32 _terraAddress) public onlyAuthSender {
         terraAddress = _terraAddress;
+    }
+
+    function getTerraAddress() public returns (bytes32) {
+        return terraAddress;
     }
 
     function initDepositStable(uint256 amount) public onlyAuthSender checkInit terraAddressSet {    
