@@ -217,18 +217,18 @@
     "absolutePath": "/Users/shhong/Developer/anchor_eth/contracts/interfaces/IShuttleAsset.sol",
     "exportedSymbols": {
       "IERC20": [
-        1602
+        1631
       ],
       "IShuttleAsset": [
-        693
+        722
       ]
     },
-    "id": 694,
+    "id": 723,
     "license": "UNLICENSED",
     "nodeType": "SourceUnit",
     "nodes": [
       {
-        "id": 682,
+        "id": 711,
         "literals": [
           "solidity",
           "^",
@@ -236,16 +236,16 @@
           ".0"
         ],
         "nodeType": "PragmaDirective",
-        "src": "96:23:5"
+        "src": "96:23:6"
       },
       {
         "absolutePath": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
         "file": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
-        "id": 683,
+        "id": 712,
         "nodeType": "ImportDirective",
-        "scope": 694,
-        "sourceUnit": 1603,
-        "src": "121:56:5",
+        "scope": 723,
+        "sourceUnit": 1632,
+        "src": "121:56:6",
         "symbolAliases": [],
         "unitAlias": ""
       },
@@ -254,54 +254,54 @@
         "baseContracts": [
           {
             "baseName": {
-              "id": 684,
+              "id": 713,
               "name": "IERC20",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 1602,
-              "src": "206:6:5",
+              "referencedDeclaration": 1631,
+              "src": "206:6:6",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_IERC20_$1602",
+                "typeIdentifier": "t_contract$_IERC20_$1631",
                 "typeString": "contract IERC20"
               }
             },
-            "id": 685,
+            "id": 714,
             "nodeType": "InheritanceSpecifier",
-            "src": "206:6:5"
+            "src": "206:6:6"
           }
         ],
         "contractDependencies": [
-          1602
+          1631
         ],
         "contractKind": "interface",
         "fullyImplemented": false,
-        "id": 693,
+        "id": 722,
         "linearizedBaseContracts": [
-          693,
-          1602
+          722,
+          1631
         ],
         "name": "IShuttleAsset",
         "nodeType": "ContractDefinition",
         "nodes": [
           {
             "functionSelector": "bcf64e05",
-            "id": 692,
+            "id": 721,
             "implemented": false,
             "kind": "function",
             "modifiers": [],
             "name": "burn",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 690,
+              "id": 719,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 687,
+                  "id": 716,
                   "mutability": "mutable",
                   "name": "amount",
                   "nodeType": "VariableDeclaration",
-                  "scope": 692,
-                  "src": "233:14:5",
+                  "scope": 721,
+                  "src": "233:14:6",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -309,10 +309,10 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 686,
+                    "id": 715,
                     "name": "uint256",
                     "nodeType": "ElementaryTypeName",
-                    "src": "233:7:5",
+                    "src": "233:7:6",
                     "typeDescriptions": {
                       "typeIdentifier": "t_uint256",
                       "typeString": "uint256"
@@ -322,12 +322,12 @@
                 },
                 {
                   "constant": false,
-                  "id": 689,
+                  "id": 718,
                   "mutability": "mutable",
                   "name": "to",
                   "nodeType": "VariableDeclaration",
-                  "scope": 692,
-                  "src": "249:10:5",
+                  "scope": 721,
+                  "src": "249:10:6",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -335,10 +335,10 @@
                     "typeString": "bytes32"
                   },
                   "typeName": {
-                    "id": 688,
+                    "id": 717,
                     "name": "bytes32",
                     "nodeType": "ElementaryTypeName",
-                    "src": "249:7:5",
+                    "src": "249:7:6",
                     "typeDescriptions": {
                       "typeIdentifier": "t_bytes32",
                       "typeString": "bytes32"
@@ -347,36 +347,36 @@
                   "visibility": "internal"
                 }
               ],
-              "src": "232:28:5"
+              "src": "232:28:6"
             },
             "returnParameters": {
-              "id": 691,
+              "id": 720,
               "nodeType": "ParameterList",
               "parameters": [],
-              "src": "269:0:5"
+              "src": "269:0:6"
             },
-            "scope": 693,
-            "src": "219:51:5",
+            "scope": 722,
+            "src": "219:51:6",
             "stateMutability": "nonpayable",
             "virtual": false,
             "visibility": "external"
           }
         ],
-        "scope": 694,
-        "src": "179:93:5"
+        "scope": 723,
+        "src": "179:93:6"
       }
     ],
-    "src": "96:176:5"
+    "src": "96:176:6"
   },
   "legacyAST": {
     "attributes": {
       "absolutePath": "/Users/shhong/Developer/anchor_eth/contracts/interfaces/IShuttleAsset.sol",
       "exportedSymbols": {
         "IERC20": [
-          1602
+          1631
         ],
         "IShuttleAsset": [
-          693
+          722
         ]
       },
       "license": "UNLICENSED"
@@ -391,39 +391,39 @@
             ".0"
           ]
         },
-        "id": 682,
+        "id": 711,
         "name": "PragmaDirective",
-        "src": "96:23:5"
+        "src": "96:23:6"
       },
       {
         "attributes": {
-          "SourceUnit": 1603,
+          "SourceUnit": 1632,
           "absolutePath": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
           "file": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
-          "scope": 694,
+          "scope": 723,
           "symbolAliases": [
             null
           ],
           "unitAlias": ""
         },
-        "id": 683,
+        "id": 712,
         "name": "ImportDirective",
-        "src": "121:56:5"
+        "src": "121:56:6"
       },
       {
         "attributes": {
           "abstract": false,
           "contractDependencies": [
-            1602
+            1631
           ],
           "contractKind": "interface",
           "fullyImplemented": false,
           "linearizedBaseContracts": [
-            693,
-            1602
+            722,
+            1631
           ],
           "name": "IShuttleAsset",
-          "scope": 694
+          "scope": 723
         },
         "children": [
           {
@@ -432,17 +432,17 @@
               {
                 "attributes": {
                   "name": "IERC20",
-                  "referencedDeclaration": 1602,
+                  "referencedDeclaration": 1631,
                   "type": "contract IERC20"
                 },
-                "id": 684,
+                "id": 713,
                 "name": "UserDefinedTypeName",
-                "src": "206:6:5"
+                "src": "206:6:6"
               }
             ],
-            "id": 685,
+            "id": 714,
             "name": "InheritanceSpecifier",
-            "src": "206:6:5"
+            "src": "206:6:6"
           },
           {
             "attributes": {
@@ -454,7 +454,7 @@
                 null
               ],
               "name": "burn",
-              "scope": 693,
+              "scope": 722,
               "stateMutability": "nonpayable",
               "virtual": false,
               "visibility": "external"
@@ -467,7 +467,7 @@
                       "constant": false,
                       "mutability": "mutable",
                       "name": "amount",
-                      "scope": 692,
+                      "scope": 721,
                       "stateVariable": false,
                       "storageLocation": "default",
                       "type": "uint256",
@@ -479,21 +479,21 @@
                           "name": "uint256",
                           "type": "uint256"
                         },
-                        "id": 686,
+                        "id": 715,
                         "name": "ElementaryTypeName",
-                        "src": "233:7:5"
+                        "src": "233:7:6"
                       }
                     ],
-                    "id": 687,
+                    "id": 716,
                     "name": "VariableDeclaration",
-                    "src": "233:14:5"
+                    "src": "233:14:6"
                   },
                   {
                     "attributes": {
                       "constant": false,
                       "mutability": "mutable",
                       "name": "to",
-                      "scope": 692,
+                      "scope": 721,
                       "stateVariable": false,
                       "storageLocation": "default",
                       "type": "bytes32",
@@ -505,19 +505,19 @@
                           "name": "bytes32",
                           "type": "bytes32"
                         },
-                        "id": 688,
+                        "id": 717,
                         "name": "ElementaryTypeName",
-                        "src": "249:7:5"
+                        "src": "249:7:6"
                       }
                     ],
-                    "id": 689,
+                    "id": 718,
                     "name": "VariableDeclaration",
-                    "src": "249:10:5"
+                    "src": "249:10:6"
                   }
                 ],
-                "id": 690,
+                "id": 719,
                 "name": "ParameterList",
-                "src": "232:28:5"
+                "src": "232:28:6"
               },
               {
                 "attributes": {
@@ -526,24 +526,24 @@
                   ]
                 },
                 "children": [],
-                "id": 691,
+                "id": 720,
                 "name": "ParameterList",
-                "src": "269:0:5"
+                "src": "269:0:6"
               }
             ],
-            "id": 692,
+            "id": 721,
             "name": "FunctionDefinition",
-            "src": "219:51:5"
+            "src": "219:51:6"
           }
         ],
-        "id": 693,
+        "id": 722,
         "name": "ContractDefinition",
-        "src": "179:93:5"
+        "src": "179:93:6"
       }
     ],
-    "id": 694,
+    "id": 723,
     "name": "SourceUnit",
-    "src": "96:176:5"
+    "src": "96:176:6"
   },
   "compiler": {
     "name": "solc",
@@ -551,7 +551,7 @@
   },
   "networks": {},
   "schemaVersion": "3.3.3",
-  "updatedAt": "2021-01-12T08:06:11.743Z",
+  "updatedAt": "2021-01-18T11:03:19.647Z",
   "devdoc": {
     "kind": "dev",
     "methods": {
