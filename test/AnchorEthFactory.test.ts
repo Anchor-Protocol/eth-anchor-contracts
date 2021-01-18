@@ -69,7 +69,7 @@ describe('AnchorEthFactory', () => {
                 anchor_account.connect(user).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
             ]);
 
-            await expect(anchor_account.connect(user).finishDepositStable())
+            await expect(anchor_account.connect(deployer).finishDepositStable())
             .to.revertedWith('AnchorAccount: finish operation: init not called yet');
         });
 
@@ -108,7 +108,7 @@ describe('AnchorEthFactory', () => {
                 anchor_account.connect(user).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
                 anchor_account.connect(user).initDepositStable(DEPOSIT_AMOUNT),
             ]);
-            await expect(anchor_account.connect(user).finishDepositStable())
+            await expect(anchor_account.connect(deployer).finishDepositStable())
             .to.revertedWith('AnchorAccount: finish deposit operation: not enough aust');
         });
 
@@ -121,7 +121,7 @@ describe('AnchorEthFactory', () => {
                 anchor_ust.connect(deployer).mint(anchor_account.address, DEPOSIT_AMOUNT),
             ]);
 
-            await expect(anchor_account.connect(user).finishDepositStable())
+            await expect(anchor_account.connect(deployer).finishDepositStable())
             .to.emit(anchor_account, 'FinishDeposit')
             .withArgs(user.address);
         });
@@ -174,7 +174,7 @@ describe('AnchorEthFactory', () => {
                 anchor_account.connect(user).initRedeemStable(DEPOSIT_AMOUNT),
             ]);
 
-            await expect(anchor_account.connect(user).finishRedeemStable())
+            await expect(anchor_account.connect(deployer).finishRedeemStable())
             .to.revertedWith('AnchorAccount: finish redemption operation: not enough ust');
         });
 
@@ -187,7 +187,7 @@ describe('AnchorEthFactory', () => {
                 terra_usd.connect(deployer).mint(anchor_account.address, DEPOSIT_AMOUNT),
             ]);
 
-            await expect(anchor_account.connect(user).finishRedeemStable())
+            await expect(anchor_account.connect(deployer).finishRedeemStable())
             .to.emit(anchor_account, 'FinishRedemption')
             .withArgs(user.address);
         });
