@@ -78,6 +78,7 @@ contract AnchorAccount is Ownable {
     IShuttleAsset public anchorust;
 
     address public anchorFactory;
+    address public controllerAddress;
     address public walletAddress;
     bytes32 public terraAddress;
     bool private ActionFlag = false;
@@ -100,7 +101,12 @@ contract AnchorAccount is Ownable {
     }
 
     modifier onlyAuthSender() {
-        require(walletAddress == msg.sender, "AnchorAccount: unauthorized sender");
+        require(walletAddress == msg.sender || controllerAddress == msg.sender, "AnchorAccount: unauthorized sender");
+        _;
+    }
+    
+    modifier onlyController() {
+        require(controllerAddress == msg.sender, "AnchorAccount: only callable by controller");
         _;
     }
 
@@ -109,7 +115,7 @@ contract AnchorAccount is Ownable {
         _;
     }
 
-    function setTerraAddress(bytes32 _terraAddress) public onlyAuthSender {
+    function setTerraAddress(bytes32 _terraAddress) public onlyController {
         terraAddress = _terraAddress;
     }
 
@@ -133,10 +139,10 @@ contract AnchorAccount is Ownable {
     }
 
     function finishDepositStable() public checkFinish terraAddressSet {
-        // transfer aUST to msg.sender
+        // contract holds returned aUST
         // call will fail if aUST was not returned from Shuttle/Anchorbot/Terra contracts
         require(anchorust.balanceOf(address(this)) > 0, "AnchorAccount: finish deposit operation: not enough aust");
-        anchorust.transfer(walletAddress, anchorust.balanceOf(address(this)));
+        // anchorust.transfer(walletAddress, anchorust.balanceOf(address(this)));
 
         // set ActionFlag to false
         ActionFlag = false;
@@ -145,13 +151,12 @@ contract AnchorAccount is Ownable {
         emit FinishDeposit(walletAddress);
     }
 
-    function initRedeemStable(uint256 amount) public onlyAuthSender checkInit terraAddressSet {
-        require(amount > 0, "AnchorAccount: amount must be greater than 0");
-        // transfer aUST to contract address
-        anchorust.transferFrom(msg.sender, address(this), amount);
+    function initRedeemStable() public onlyAuthSender checkInit terraAddressSet {
+        require(anchorust.balanceOf(address(this)) > 0, "AnchorAccount: amount must be greater than 0");
+        // anchorust.transferFrom(msg.sender, address(this), amount);
 
         // transfer aUST to Shuttle
-        anchorust.burn(amount, terraAddress);
+        anchorust.burn(anchorust.balanceOf(address(this), terraAddress);
 
         // set ActionFlag to true
         ActionFlag = true;
@@ -160,7 +165,7 @@ contract AnchorAccount is Ownable {
         emit InitRedemption(msg.sender, amount, terraAddress);
     }
 
-    function finishRedeemStable() public checkFinish terraAddressSet {
+    function finishRedeemStable() public onlyAuthSender checkFinish terraAddressSet {
         // transfer UST to msg.sender
         // call will fail if aUST was not returned from Shuttle/Anchorbot/Terra contracts
         require(terrausd.balanceOf(address(this)) > 0, "AnchorAccount: finish redemption operation: not enough ust");
@@ -173,7 +178,7 @@ contract AnchorAccount is Ownable {
         emit FinishRedemption(walletAddress);
     }
 
-    function reportFailure() public onlyOwner checkInit {
+    function reportFailure() public onlyController checkInit {
         // contract owner can force revert init() txs in case of aUST redemption failure
         // resets ActionFlag and return deposited funds to msg.sender
         require(terrausd.balanceOf(address(this)) == 0 && ActionFlag == true, "AnchorAccount: call finish first");
