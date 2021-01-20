@@ -46,13 +46,13 @@ contract AnchorEthFactory is Ownable {
     }
 
     // getters
-    function getContractAddress(address _sender) public returns (address) {
+    function getContractAddress(address _sender) public view returns (address) {
         return ContractMap[_sender];
     }
 
     function deployContract(address _walletAddress) onlyOwner public {
         // create new contract
-        AnchorAccount accountContract = new AnchorAccount(address(this), _walletAddress, address(terrausd), address(anchorust));
+        AnchorAccount accountContract = new AnchorAccount(address(this), _walletAddress, msg.sender, address(terrausd), address(anchorust));
         // append to map
         ContractMap[_walletAddress] = address(accountContract);
         ContractsList.push(accountContract);
@@ -83,9 +83,10 @@ contract AnchorAccount is Ownable {
     bytes32 public terraAddress;
     bool private ActionFlag = false;
 
-    constructor(address _anchorFactory, address _walletAddress, address _terrausd, address _anchorust) {
+    constructor(address _anchorFactory, address _controllerAddress, address _walletAddress, address _terrausd, address _anchorust) {
         anchorFactory = _anchorFactory;
         walletAddress = _walletAddress;
+        controllerAddress = _controllerAddress;
         terrausd = IShuttleAsset(_terrausd);
         anchorust = IShuttleAsset(_anchorust);
     }
@@ -119,7 +120,7 @@ contract AnchorAccount is Ownable {
         terraAddress = _terraAddress;
     }
 
-    function getTerraAddress() public returns (bytes32) {
+    function getTerraAddress() public view returns (bytes32) {
         return terraAddress;
     }
 
@@ -138,7 +139,7 @@ contract AnchorAccount is Ownable {
         emit InitDeposit(msg.sender, amount, terraAddress);
     }
 
-    function finishDepositStable() public checkFinish terraAddressSet {
+    function finishDepositStable() public onlyAuthSender checkFinish terraAddressSet {
         // contract holds returned aUST
         // call will fail if aUST was not returned from Shuttle/Anchorbot/Terra contracts
         require(anchorust.balanceOf(address(this)) > 0, "AnchorAccount: finish deposit operation: not enough aust");
@@ -154,15 +155,16 @@ contract AnchorAccount is Ownable {
     function initRedeemStable() public onlyAuthSender checkInit terraAddressSet {
         require(anchorust.balanceOf(address(this)) > 0, "AnchorAccount: amount must be greater than 0");
         // anchorust.transferFrom(msg.sender, address(this), amount);
+        uint256 aUSTBalance = anchorust.balanceOf(address(this));
 
         // transfer aUST to Shuttle
-        anchorust.burn(anchorust.balanceOf(address(this), terraAddress);
+        anchorust.burn(aUSTBalance, terraAddress);
 
         // set ActionFlag to true
         ActionFlag = true;
 
         // emit initredemption event
-        emit InitRedemption(msg.sender, amount, terraAddress);
+        emit InitRedemption(msg.sender, aUSTBalance, terraAddress);
     }
 
     function finishRedeemStable() public onlyAuthSender checkFinish terraAddressSet {
