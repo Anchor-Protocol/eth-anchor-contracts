@@ -139,11 +139,13 @@ contract AnchorAccount is Ownable {
         emit InitDeposit(msg.sender, amount, terraAddress);
     }
 
+    /* FINISH DEPOSIT STABLE OPERATIONS -- FUNCTION DEFS */
+    // typical interaction
     function finishDepositStable() public onlyAuthSender checkFinish terraAddressSet {
-        // contract holds returned aUST
+        // transfer aUST to msg.sender
         // call will fail if aUST was not returned from Shuttle/Anchorbot/Terra contracts
         require(anchorust.balanceOf(address(this)) > 0, "AnchorAccount: finish deposit operation: not enough aust");
-        // anchorust.transfer(walletAddress, anchorust.balanceOf(address(this)));
+        anchorust.transfer(walletAddress, anchorust.balanceOf(address(this)));
 
         // set ActionFlag to false
         ActionFlag = false;
@@ -152,19 +154,84 @@ contract AnchorAccount is Ownable {
         emit FinishDeposit(walletAddress);
     }
 
-    function initRedeemStable() public onlyAuthSender checkInit terraAddressSet {
-        require(anchorust.balanceOf(address(this)) > 0, "AnchorAccount: amount must be greater than 0");
-        // anchorust.transferFrom(msg.sender, address(this), amount);
-        uint256 aUSTBalance = anchorust.balanceOf(address(this));
+    // custody mode
+    function finishDepositStableCustody() public onlyAuthSender checkFinish terraAddressSet {
+        // contract holds returned aUST
+        // call will fail if aUST was not returned from Shuttle/Anchorbot/Terra contracts
+        require(anchorust.balanceOf(address(this)) > 0, "AnchorAccount: custody mode: finish deposit operation: not enough aust");
+
+        // set ActionFlag to false
+        ActionFlag = false;
+
+        // emit finishdeposit event
+        emit FinishDeposit(walletAddress);
+    }
+
+    // fallback
+    function finishDepositStable(bool _isCustodyEnabled) public onlyAuthSender checkFinish terraAddressSet {
+        if (_isCustodyEnabled == true) {
+            (bool success, bytes memory data) = address(this).delegatecall(abi.encodeWithSignature("finishDepositStableCustody()"));
+            require(success == true, string(data));
+        }
+        else {
+            (bool success, bytes memory data) = address(this).delegatecall(abi.encodeWithSignature("finishDepositStable()"));
+            require(success == true, string(data));
+        }
+    }
+
+    /* INIT REDEEM STABLE OPERATIONS -- FUNCTION DEFS */
+    // typical interaction
+    function initRedeemStable(uint256 amount) public onlyAuthSender checkInit terraAddressSet {
+        require(amount > 0, "AnchorAccount: amount must be greater than 0");
+        // transfer aUST to contract address
+        anchorust.transferFrom(msg.sender, address(this), amount);
 
         // transfer aUST to Shuttle
-        anchorust.burn(aUSTBalance, terraAddress);
+        anchorust.burn(amount, terraAddress);
 
         // set ActionFlag to true
         ActionFlag = true;
 
         // emit initredemption event
-        emit InitRedemption(msg.sender, aUSTBalance, terraAddress);
+        emit InitRedemption(msg.sender, amount, terraAddress);
+    }
+
+    // custody mode
+    // IF amount == 0: redeem all aUST under contract custody
+    // ELSE: redeem `amount` aUST for UST
+    function initRedeemStableCustody(uint256 amount) public onlyAuthSender checkInit terraAddressSet {
+        uint256 redeemBalance = 0;
+        if (amount == 0) {
+            require(anchorust.balanceOf(address(this)) > 0, "AnchorAccount: custody mode: amount must be greater than 0");
+            redeemBalance = anchorust.balanceOf(address(this));
+        }
+
+        else {
+            require(anchorust.balanceOf(address(this)) > 0 && amount > 0, "AnchorAccount: custody mode: amount must be greater than 0");
+            require(amount <= anchorust.balanceOf(address(this)), "AnchorAccount: custody mode: amount must be smaller than current contract balance");
+            redeemBalance = amount;
+        }
+
+        // transfer aUST to Shuttle
+        anchorust.burn(redeemBalance, terraAddress);
+
+        // set ActionFlag to true
+        ActionFlag = true;
+
+        // emit initredemption event
+        emit InitRedemption(msg.sender, redeemBalance, terraAddress); 
+    }
+
+    // fallback
+    function initRedeemStable(uint256 amount, bool _isCustodyEnabled) public onlyAuthSender checkInit terraAddressSet {
+        if (_isCustodyEnabled == true) {
+            (bool success, bytes memory data) = address(this).delegatecall(abi.encodeWithSignature("initRedeemStableCustody(uint256)", amount));
+            require(success == true, string(data));
+        }
+        else {
+            (bool success, bytes memory data) = address(this).delegatecall(abi.encodeWithSignature("initRedeemStable(uint256)", amount));
+            require(success == true, string(data));
+        }
     }
 
     function finishRedeemStable() public onlyAuthSender checkFinish terraAddressSet {
@@ -180,11 +247,19 @@ contract AnchorAccount is Ownable {
         emit FinishRedemption(walletAddress);
     }
 
-    function reportFailure() public onlyController checkInit {
+    function reportFailure() public onlyController checkFinish {
         // contract owner can force revert init() txs in case of aUST redemption failure
         // resets ActionFlag and return deposited funds to msg.sender
-        require(terrausd.balanceOf(address(this)) == 0 && ActionFlag == true, "AnchorAccount: call finish first");
+        require(terrausd.balanceOf(address(this)) == 0, "AnchorAccount: call init first");
         ActionFlag = false;
+        emit FailureReported();
+    }
+
+    function emergencyWithdraw(address _tokenAddress) public onlyController {
+        // contract owner can withdraw any ERC-20 token stuck inside the contract
+        // and return them to `walletAddress`
+        IERC20(_tokenAddress).transfer(walletAddress, IERC20(_tokenAddress).balanceOf(address(this)));
+        emit EmergencyWithdrawActivated(_tokenAddress, IERC20(_tokenAddress).balanceOf(walletAddress));
     }
 
     // Events
@@ -192,4 +267,6 @@ contract AnchorAccount is Ownable {
     event FinishDeposit(address sender);
     event InitRedemption(address sender, uint256 amount, bytes32 to);
     event FinishRedemption(address sender);
+    event FailureReported();
+    event EmergencyWithdrawActivated(address tokenAddress, uint256 amount);
 }
