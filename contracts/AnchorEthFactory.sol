@@ -6,10 +6,11 @@ import '@openzeppelin/contracts/math/SafeMath.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
+import '@openzeppelin/contracts-upgradeable/proxy/Initializable.sol';
 import './interfaces/IShuttleAsset.sol';
 import './interfaces/IAnchorAccount.sol';
 
-contract AnchorEthFactory is Ownable {
+contract AnchorEthFactory is Ownable, Initializable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -19,21 +20,17 @@ contract AnchorEthFactory is Ownable {
     IShuttleAsset public terrausd;
     IShuttleAsset public anchorust;
 
-    bool public isMigrated = false;
-
-    constructor(address _terrausd, address _anchorust) {
+    function initialize(address _terrausd, address _anchorust) public initializer {
         terrausd = IShuttleAsset(_terrausd);
         anchorust = IShuttleAsset(_anchorust);
     }
 
     // **MUST** be called after calling openzeppelin upgradable_contract_deploy_proxy
-    function migrate(address newContract) public onlyOwner {
-        require(isMigrated == false, "AnchorEthFactory: contract already migrated");
+    function migrate(address newContract, address[] memory contracts) public onlyOwner {
         // migrate subcontract ownership to new contract
-        for (uint i = 0; i < ContractsList.length; i++) {
-            ContractsList[i].transferOwnership(newContract);
+        for (uint i = 0; i < contracts.length; i++) {
+            IAnchorAccount(contracts[i]).transferOwnership(newContract);
         }
-        isMigrated = true;
     }
 
     // setters
@@ -52,7 +49,8 @@ contract AnchorEthFactory is Ownable {
 
     function deployContract(address _walletAddress) onlyOwner public {
         // create new contract
-        AnchorAccount accountContract = new AnchorAccount(address(this), _walletAddress, msg.sender, address(terrausd), address(anchorust));
+        AnchorAccount accountContract = new AnchorAccount();
+        accountContract.initialize(address(this), _walletAddress, msg.sender, address(terrausd), address(anchorust));
         // append to map
         ContractMap[_walletAddress] = address(accountContract);
         ContractsList.push(accountContract);
@@ -70,7 +68,7 @@ contract AnchorEthFactory is Ownable {
 
 // AnchorAccount.sol: subcontract generated per wallet, defining all relevant wrapping functions
 
-contract AnchorAccount is Ownable {
+contract AnchorAccount is Ownable, Initializable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -83,7 +81,7 @@ contract AnchorAccount is Ownable {
     bytes32 public terraAddress;
     bool private ActionFlag = false;
 
-    constructor(address _anchorFactory, address _controllerAddress, address _walletAddress, address _terrausd, address _anchorust) {
+    function initialize(address _anchorFactory, address _controllerAddress, address _walletAddress, address _terrausd, address _anchorust) public initializer {
         anchorFactory = _anchorFactory;
         walletAddress = _walletAddress;
         controllerAddress = _controllerAddress;
@@ -263,10 +261,10 @@ contract AnchorAccount is Ownable {
     }
 
     // Events
-    event InitDeposit(address sender, uint256 amount, bytes32 to);
-    event FinishDeposit(address sender);
-    event InitRedemption(address sender, uint256 amount, bytes32 to);
-    event FinishRedemption(address sender);
+    event InitDeposit(address indexed sender, uint256 amount, bytes32 to);
+    event FinishDeposit(address indexed sender);
+    event InitRedemption(address indexed sender, uint256 amount, bytes32 to);
+    event FinishRedemption(address indexed sender);
     event FailureReported();
     event EmergencyWithdrawActivated(address tokenAddress, uint256 amount);
 }
