@@ -28,12 +28,12 @@ async function deployFactory(deployer, network, accounts) {
   }
 
   if (network == 'ropsten') {
-    await deployer.deploy(AnchorEthFactory, "0x6cA13a4ab78dd7D657226b155873A04DB929A3A4", "0x51e7f3ED326719a1469EbD7E68B8AB963d64eBA6") // using ropsten mnt address for aust
+    await deployer.deploy(AnchorEthFactory, "0x6cA13a4ab78dd7D657226b155873A04DB929A3A4", "0xDAdC10D2dAC9E111835d4423670573Ae45714e7C") // using ropsten mnt address for aust
     
   }
 
   if (network == 'mainnet') {
-    await deployer.deploy(AnchorEthFactory, "0xa47c8bf37f92aBed4A126BDA807A7b7498661acD", "0x156B36ec68FdBF84a925230BA96cb1Ca4c4bdE45") // using mainnet mnt address for aust
+    await deployer.deploy(AnchorEthFactory, "0xa47c8bf37f92aBed4A126BDA807A7b7498661acD", "0x09a3EcAFa817268f77BE1283176B946C4ff2E608") // using mainnet mnt address for aust
     
   }
 }
