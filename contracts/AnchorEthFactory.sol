@@ -34,7 +34,7 @@ contract AnchorEthFactory is Ownable, Initializable {
     }
 
     // setters
-    function setUSTAddess(IShuttleAsset _terrausd) public onlyOwner {
+    function setUSTAddress(IShuttleAsset _terrausd) public onlyOwner {
         terrausd = _terrausd;
     }
 
