@@ -45,8 +45,9 @@ describe('AnchorEthFactory', () => {
             terra_usd.address,
             anchor_ust.address
         );
-        anchor_account = await AnchorAccount.connect(user).deploy(
+        anchor_account = await AnchorAccount.connect(deployer).deploy(
             anchor_eth_factory.address,
+            deployer.address,
             user.address,
             terra_usd.address,
             anchor_ust.address
@@ -60,16 +61,21 @@ describe('AnchorEthFactory', () => {
             await expect(anchor_eth_factory.connect(deployer).deployContract(user.address))
             .to.emit(anchor_eth_factory, 'ContractDeployed');
         });
+
+        it('should fail when caller is not the owner', async () => {
+            await expect(anchor_eth_factory.connect(user).deployContract(user.address))
+            .to.reverted;
+        });
     });
 
     describe('#deposit', () => {
         it('should fail for finish functions when init is not called yet', async () => {
             await Promise.all([
                 anchor_ust.connect(deployer).mint(anchor_account.address, DEPOSIT_AMOUNT),
-                anchor_account.connect(user).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
+                anchor_account.connect(deployer).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
             ]);
 
-            await expect(anchor_account.connect(deployer).finishDepositStable())
+            await expect(anchor_account.connect(deployer)['finishDepositStable(bool)'](false))
             .to.revertedWith('AnchorAccount: finish operation: init not called yet');
         });
 
@@ -77,7 +83,7 @@ describe('AnchorEthFactory', () => {
             await Promise.all([
                 terra_usd.connect(deployer).mint(user.address, DEPOSIT_AMOUNT),
                 terra_usd.connect(user).approve(anchor_account.address, DEPOSIT_AMOUNT),
-                anchor_account.connect(user).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
+                anchor_account.connect(deployer).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
             ]);
 
             await expect(anchor_account.connect(user).initDepositStable(DEPOSIT_AMOUNT))
@@ -93,7 +99,7 @@ describe('AnchorEthFactory', () => {
             await Promise.all([
                 terra_usd.connect(deployer).mint(user.address, DEPOSIT_AMOUNT),
                 terra_usd.connect(user).approve(anchor_account.address, DEPOSIT_AMOUNT),
-                anchor_account.connect(user).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
+                anchor_account.connect(deployer).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
                 anchor_account.connect(user).initDepositStable(DEPOSIT_AMOUNT),
             ]);
 
@@ -101,27 +107,52 @@ describe('AnchorEthFactory', () => {
             .to.revertedWith('AnchorAccount: init operation: init already called');
         });
 
-        it('should fail for finish functions when there is not enough balance', async () => {
+        it('should fail for non-custodial finish functions when there is not enough balance', async () => {
             await Promise.all([
                 terra_usd.connect(deployer).mint(user.address, DEPOSIT_AMOUNT),
                 terra_usd.connect(user).approve(anchor_account.address, DEPOSIT_AMOUNT),
-                anchor_account.connect(user).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
+                anchor_account.connect(deployer).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
                 anchor_account.connect(user).initDepositStable(DEPOSIT_AMOUNT),
             ]);
-            await expect(anchor_account.connect(deployer).finishDepositStable())
-            .to.revertedWith('AnchorAccount: finish deposit operation: not enough aust');
+            await expect(anchor_account.connect(user)['finishDepositStable(bool)'](false))
+            .to.revertedWith('AnchorAccount: finish deposit operation: not enough aust')
         });
 
-        it('should work for finish functions', async () => {
+        it('should fail for custodial finish functions when there is not enough balance', async () => {
             await Promise.all([
                 terra_usd.connect(deployer).mint(user.address, DEPOSIT_AMOUNT),
                 terra_usd.connect(user).approve(anchor_account.address, DEPOSIT_AMOUNT),
-                anchor_account.connect(user).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
+                anchor_account.connect(deployer).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
+                anchor_account.connect(user).initDepositStable(DEPOSIT_AMOUNT),
+            ]);
+            await expect(anchor_account.connect(deployer)['finishDepositStable(bool)'](true))
+            .to.revertedWith('AnchorAccount: custody mode: finish deposit operation: not enough aust');
+        });
+
+        it('should work for non-custodial finish functions', async () => {
+            await Promise.all([
+                terra_usd.connect(deployer).mint(user.address, DEPOSIT_AMOUNT),
+                terra_usd.connect(user).approve(anchor_account.address, DEPOSIT_AMOUNT),
+                anchor_account.connect(deployer).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
                 anchor_account.connect(user).initDepositStable(DEPOSIT_AMOUNT),
                 anchor_ust.connect(deployer).mint(anchor_account.address, DEPOSIT_AMOUNT),
             ]);
 
-            await expect(anchor_account.connect(deployer).finishDepositStable())
+            await expect(anchor_account.connect(user)['finishDepositStable(bool)'](false))
+            .to.emit(anchor_account, 'FinishDeposit')
+            .withArgs(user.address);
+        });
+
+        it('should work for custodial finish functions', async () => {
+            await Promise.all([
+                terra_usd.connect(deployer).mint(user.address, DEPOSIT_AMOUNT),
+                terra_usd.connect(user).approve(anchor_account.address, DEPOSIT_AMOUNT),
+                anchor_account.connect(deployer).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
+                anchor_account.connect(user).initDepositStable(DEPOSIT_AMOUNT),
+                anchor_ust.connect(deployer).mint(anchor_account.address, DEPOSIT_AMOUNT),
+            ]);
+
+            await expect(anchor_account.connect(deployer)['finishDepositStable(bool)'](true))
             .to.emit(anchor_account, 'FinishDeposit')
             .withArgs(user.address);
         });
@@ -131,21 +162,21 @@ describe('AnchorEthFactory', () => {
         it('should fail for finish functions when init is not called yet', async () => {
             await Promise.all([
                 terra_usd.connect(deployer).mint(anchor_account.address, DEPOSIT_AMOUNT),
-                anchor_account.connect(user).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
+                anchor_account.connect(deployer).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
             ]);
 
             await expect(anchor_account.connect(user).finishRedeemStable())
             .to.revertedWith('AnchorAccount: finish operation: init not called yet');
         });
 
-        it('should work for initializer functions', async () => {
+        it('should work for non-custodial initializer functions', async () => {
             await Promise.all([
                 anchor_ust.connect(deployer).mint(user.address, DEPOSIT_AMOUNT),
+                anchor_account.connect(deployer).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
                 anchor_ust.connect(user).approve(anchor_account.address, DEPOSIT_AMOUNT),
-                anchor_account.connect(user).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
             ]);
 
-            await expect(anchor_account.connect(user).initRedeemStable(DEPOSIT_AMOUNT))
+            await expect(anchor_account.connect(user)['initRedeemStable(uint256,bool)'](DEPOSIT_AMOUNT, false))
             .to.emit(anchor_account, 'InitRedemption')
             .withArgs(
                 user.address,
@@ -154,24 +185,63 @@ describe('AnchorEthFactory', () => {
             );
         });
 
-        it('should fail for initializer functions when finish is not called yet', async () => {
+        it('should work for custodial initializer functions when aust balance is partially redeemed', async () => {
             await Promise.all([
-                anchor_ust.connect(deployer).mint(user.address, DEPOSIT_AMOUNT),
-                anchor_ust.connect(user).approve(anchor_account.address, DEPOSIT_AMOUNT),
-                anchor_account.connect(user).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
-                anchor_account.connect(user).initRedeemStable(DEPOSIT_AMOUNT),
+                anchor_ust.connect(deployer).mint(anchor_account.address, DEPOSIT_AMOUNT),
+                anchor_account.connect(deployer).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
             ]);
 
-            await expect(anchor_account.connect(user).initRedeemStable(DEPOSIT_AMOUNT))
+            await expect(anchor_account.connect(user)['initRedeemStable(uint256,bool)'](ETH.mul(10), true))
+            .to.emit(anchor_account, 'InitRedemption')
+            .withArgs(
+                user.address,
+                ETH.mul(10), 
+                '0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'
+            );
+        });
+
+        it('should work for custodial initializer functions when aust balance is fully redeemed', async () => {
+            await Promise.all([
+                anchor_ust.connect(deployer).mint(anchor_account.address, DEPOSIT_AMOUNT),
+                anchor_account.connect(deployer).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
+            ]);
+
+            await expect(anchor_account.connect(user)['initRedeemStable(uint256,bool)'](0, true))
+            .to.emit(anchor_account, 'InitRedemption')
+            .withArgs(
+                user.address,
+                DEPOSIT_AMOUNT, 
+                '0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'
+            );
+        });
+
+        it('should fail for custodial initializer functions when requested aust balance exceeds current contract balance', async () => {
+            await Promise.all([
+                anchor_ust.connect(deployer).mint(anchor_account.address, DEPOSIT_AMOUNT),
+                anchor_account.connect(deployer).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
+            ]);
+
+            await expect(anchor_account.connect(user)['initRedeemStable(uint256,bool)'](ETH.mul(1000), true))
+            .to.revertedWith('AnchorAccount: custody mode: amount must be smaller than current contract balance');
+        });
+
+        it('should fail for initializer functions when finish is not called yet', async () => {
+            await Promise.all([
+                anchor_ust.connect(deployer).mint(anchor_account.address, DEPOSIT_AMOUNT),
+                anchor_account.connect(deployer).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
+                anchor_account.connect(deployer)['initRedeemStable(uint256,bool)'](0, true),
+            ]);
+
+            await expect(anchor_account.connect(user)['initRedeemStable(uint256,bool)'](0, false))
             .to.revertedWith('AnchorAccount: init operation: init already called');
         });
 
         it('should fail for finish functions when there is not enough balance', async () => {
             await Promise.all([
                 anchor_ust.connect(deployer).mint(user.address, DEPOSIT_AMOUNT),
+                anchor_account.connect(deployer).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
                 anchor_ust.connect(user).approve(anchor_account.address, DEPOSIT_AMOUNT),
-                anchor_account.connect(user).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
-                anchor_account.connect(user).initRedeemStable(DEPOSIT_AMOUNT),
+                anchor_account.connect(user)['initRedeemStable(uint256,bool)'](DEPOSIT_AMOUNT, false),
             ]);
 
             await expect(anchor_account.connect(deployer).finishRedeemStable())
@@ -181,15 +251,59 @@ describe('AnchorEthFactory', () => {
         it('should work for finish functions', async () => {
             await Promise.all([
                 anchor_ust.connect(deployer).mint(user.address, DEPOSIT_AMOUNT),
+                anchor_account.connect(deployer).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
                 anchor_ust.connect(user).approve(anchor_account.address, DEPOSIT_AMOUNT),
-                anchor_account.connect(user).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
-                anchor_account.connect(user).initRedeemStable(DEPOSIT_AMOUNT),
+                anchor_account.connect(user)['initRedeemStable(uint256,bool)'](DEPOSIT_AMOUNT, false),
                 terra_usd.connect(deployer).mint(anchor_account.address, DEPOSIT_AMOUNT),
             ]);
 
-            await expect(anchor_account.connect(deployer).finishRedeemStable())
+            await expect(anchor_account.connect(user).finishRedeemStable())
             .to.emit(anchor_account, 'FinishRedemption')
             .withArgs(user.address);
+        });
+    });
+
+    describe('#exceptions', () => {
+        it('should work for reportFailure calls', async () => {
+            await Promise.all([
+                anchor_ust.connect(deployer).mint(anchor_account.address, DEPOSIT_AMOUNT),
+                anchor_account.connect(deployer).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
+                anchor_account.connect(deployer)['initRedeemStable(uint256,bool)'](0, true),
+            ]);
+            await expect(anchor_account.connect(deployer).reportFailure())
+            .to.emit(anchor_account, 'FailureReported');
+        });
+
+        it('should fail for reportFailure calls not made by controller', async () => {
+            await Promise.all([
+                anchor_ust.connect(deployer).mint(anchor_account.address, DEPOSIT_AMOUNT),
+                anchor_account.connect(deployer).setTerraAddress('0x890d71d9e7031a9a09b82c214dba08a413e133a5000000000000000000000000'),
+                anchor_account.connect(deployer)['initRedeemStable(uint256,bool)'](0, true),
+            ]);
+            await expect(anchor_account.connect(user).reportFailure())
+            .to.reverted;
+        });
+
+        it('should fail for reportFailure calls without an init call', async () => {
+            await expect(anchor_account.connect(user).reportFailure())
+            .to.reverted;
+        });
+
+        it('should work for emergencyWithdraw calls for UST', async () => {
+            await Promise.all([
+                terra_usd.connect(deployer).mint(anchor_account.address, DEPOSIT_AMOUNT),
+            ]);
+            await expect(anchor_account.connect(deployer).emergencyWithdraw(terra_usd.address))
+            .to.emit(anchor_account, 'EmergencyWithdrawActivated')
+            .withArgs(terra_usd.address, DEPOSIT_AMOUNT);
+        });
+
+        it('should fail for emergencyWithdraw calls not made by controller', async () => {
+            await Promise.all([
+                terra_usd.connect(deployer).mint(anchor_account.address, DEPOSIT_AMOUNT),
+            ]);
+            await expect(anchor_account.connect(user).emergencyWithdraw(terra_usd.address))
+            .to.reverted;
         });
     });
 })
