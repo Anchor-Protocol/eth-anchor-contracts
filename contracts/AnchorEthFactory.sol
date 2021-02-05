@@ -47,10 +47,10 @@ contract AnchorEthFactory is Ownable, Initializable {
         return ContractMap[_sender];
     }
 
-    function deployContract(address _walletAddress) onlyOwner public {
+    function deployContract(address _walletAddress) public {
         // create new contract
         AnchorAccount accountContract = new AnchorAccount();
-        accountContract.initialize(address(this), _walletAddress, msg.sender, address(terrausd), address(anchorust));
+        accountContract.initialize(address(this), msg.sender, _walletAddress, address(terrausd), address(anchorust));
         // append to map
         ContractMap[_walletAddress] = address(accountContract);
         ContractsList.push(accountContract);
