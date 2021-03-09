@@ -6,7 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 chai.use(solidity);
 
-describe('AnchorEthFactory', () => {
+describe('EthAnchorFactory', () => {
     const ETH = utils.parseEther('1');
     const DEPOSIT_AMOUNT = ETH.mul(100);
 
@@ -23,13 +23,13 @@ describe('AnchorEthFactory', () => {
 
     let TerraUSD: ContractFactory;
     let AnchorUST: ContractFactory;
-    let AnchorEthFactory: ContractFactory;
+    let EthAnchorFactory: ContractFactory;
     let AnchorAccount: ContractFactory;
 
     before('initialize ContractFactory', async () => {
         TerraUSD = await ethers.getContractFactory('TerraUSD');
         AnchorUST = await ethers.getContractFactory('AnchorUST');
-        AnchorEthFactory = await ethers.getContractFactory('AnchorEthFactory');
+        EthAnchorFactory = await ethers.getContractFactory('EthAnchorFactory');
         AnchorAccount = await ethers.getContractFactory('AnchorAccount');
     });
 
@@ -41,11 +41,24 @@ describe('AnchorEthFactory', () => {
     beforeEach('deploy all contracts', async () => {
         terra_usd = await TerraUSD.connect(deployer).deploy();
         anchor_ust = await AnchorUST.connect(deployer).deploy();
-        anchor_eth_factory = await AnchorEthFactory.connect(deployer).deploy(
+        //anchor_eth_factory = await EthAnchorFactory.connect(deployer).deploy(
+        //    terra_usd.address,
+        //    anchor_ust.address
+        //);
+        anchor_eth_factory = await EthAnchorFactory.connect(deployer).deploy();
+        await anchor_eth_factory.connect(deployer).initialize(
             terra_usd.address,
             anchor_ust.address
         );
-        anchor_account = await AnchorAccount.connect(deployer).deploy(
+        //anchor_account = await AnchorAccount.connect(deployer).deploy(
+        //    anchor_eth_factory.address,
+        //    deployer.address,
+        //    user.address,
+        //    terra_usd.address,
+        //    anchor_ust.address
+        //);
+        anchor_account = await AnchorAccount.connect(deployer).deploy();
+        await anchor_account.connect(deployer).initialize(
             anchor_eth_factory.address,
             deployer.address,
             user.address,

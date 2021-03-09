@@ -15,6 +15,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "^3.3.0",
     "@openzeppelin/contracts-upgradeable": "^3.3.0",
-    "@truffle/hdwallet-provider": "^1.2.1"
+    "@truffle/hdwallet-provider": "^1.2.1",
+    "web3-provider-engine": "^16.0.1"
   }
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-// AnchorEthFactory.sol: Factory contract for all account contracts
+// EthAnchorFactory.sol: Factory contract for all account contracts
 pragma solidity >=0.6.0 <0.8.0;
 
 import '@openzeppelin/contracts/math/SafeMath.sol';
@@ -10,7 +10,7 @@ import '@openzeppelin/contracts-upgradeable/proxy/Initializable.sol';
 import './interfaces/IShuttleAsset.sol';
 import './interfaces/IAnchorAccount.sol';
 
-contract AnchorEthFactory is Ownable, Initializable {
+contract EthAnchorFactory is Ownable, Initializable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -47,7 +47,7 @@ contract AnchorEthFactory is Ownable, Initializable {
         return ContractMap[_sender];
     }
 
-    function deployContract(address _walletAddress) public {
+    function deployContract(address _walletAddress) public onlyOwner {
         // create new contract
         AnchorAccount accountContract = new AnchorAccount();
         accountContract.initialize(address(this), msg.sender, _walletAddress, address(terrausd), address(anchorust));
