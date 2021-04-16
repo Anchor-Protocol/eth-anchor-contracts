@@ -1,12 +1,16 @@
-import '@nomiclabs/hardhat-ethers';
+import "@nomiclabs/hardhat-ethers";
+import "@nomiclabs/hardhat-etherscan";
+
+import { Networks, EtherscanAPIKey } from "./local.config";
 
 export default {
-  default: 'hardhat',
+  default: "hardhat",
   networks: {
     hardhat: {},
+    ...Networks,
   },
   solidity: {
-    version: '0.7.3',
+    version: "0.7.3",
     settings: {
       optimizer: {
         enabled: true,
@@ -15,11 +19,12 @@ export default {
     },
   },
   paths: {
-    sources: './contracts',
-    tests: './test',
-    cache: './build/cache',
-    artifacts: './build/artifacts',
+    sources: "./contracts",
+    tests: "./test",
+    cache: "./build/cache",
+    artifacts: "./build/artifacts",
+  },
+  etherscan: {
+    apiKey: EtherscanAPIKey,
   },
 };
-
-
