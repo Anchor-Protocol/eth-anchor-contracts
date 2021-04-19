@@ -17,7 +17,7 @@ contract Router is Ownable, Initializable {
 
     mapping(address => address) public ContractMap;
 
-    AnchorAccount[] private ContractsList;
+    Operation[] private ContractsList;
     IShuttleAsset public terrausd;
     IShuttleAsset public anchorust;
 
@@ -56,7 +56,7 @@ contract Router is Ownable, Initializable {
 
     function deployContract(address _walletAddress) public onlyOwner {
         // create new contract
-        AnchorAccount accountContract = new AnchorAccount();
+        Operation accountContract = new Operation();
         accountContract.initialize(
             address(this),
             msg.sender,
