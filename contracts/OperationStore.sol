@@ -3,14 +3,15 @@ pragma solidity >=0.6.0 <0.8.0;
 pragma abicoder v2;
 
 import {StdQueue} from "./utils/Queue.sol";
+import {Operator} from "./utils/Operator.sol";
 
-contract OperationStore {
+contract OperationStore is Operator {
     using StdQueue for StdQueue.Queue;
 
-    // operation struct
+    // operation
     struct OperationInfo {
-        address addr;
-        address occupier;
+        address etherAddr;
+        bytes32 terraAddr;
     }
 
     function encodeOperation(OperationInfo memory info)
@@ -18,7 +19,7 @@ contract OperationStore {
         pure
         returns (bytes memory)
     {
-        return abi.encodePacked(info.addr, info.occupier);
+        return abi.encodePacked(info.etherAddr, info.terraAddr);
     }
 
     function decodeOperation(bytes memory rawInfo)
@@ -26,46 +27,56 @@ contract OperationStore {
         pure
         returns (OperationInfo memory)
     {
-        (address addr, address occupier) =
-            abi.decode(rawInfo, (address, address));
-        return OperationInfo({addr: addr, occupier: occupier});
+        (address etherAddr, bytes32 terraAddr) =
+            abi.decode(rawInfo, (address, bytes32));
+        return OperationInfo({etherAddr: etherAddr, terraAddr: terraAddr});
     }
 
-    // queue
-    StdQueue.Queue public idleOperations;
-    StdQueue.Queue public failedOperations;
-    StdQueue.Queue public runningOperations;
+    // queues
+    StdQueue.Queue public optIdle;
+    StdQueue.Queue public optFailed;
+    StdQueue.Queue public optRunning;
 
-    function getIdleOperation(bool _consume)
-        public
-        returns (OperationInfo memory)
-    {
-        if (_consume) {
-            return decodeOperation(idleOperations.consume());
-        } else {
-            return decodeOperation(idleOperations.getItemAt(0));
-        }
+    function getIdleOperation() public view returns (OperationInfo memory) {
+        return decodeOperation(optIdle.getItemAt(0));
     }
 
-    function getFailedOperation(bool _consume)
-        public
-        returns (OperationInfo memory)
-    {
-        if (_consume) {
-            return decodeOperation(failedOperations.consume());
-        } else {
-            return decodeOperation(failedOperations.getItemAt(0));
-        }
+    function getFailedOperation() public view returns (OperationInfo memory) {
+        return decodeOperation(optFailed.getItemAt(0));
     }
 
-    function getRunningOperation(bool _consume)
-        public
-        returns (OperationInfo memory)
-    {
-        if (_consume) {
-            return decodeOperation(runningOperations.consume());
-        } else {
-            return decodeOperation(runningOperations.getItemAt(0));
-        }
+    function getRunningOperation() public view returns (OperationInfo memory) {
+        return decodeOperation(optRunning.getItemAt(0));
+    }
+
+    // lifecycle
+
+    // x -> init
+    function allocate(OperationInfo memory info) public onlyOwner {
+        optIdle.produce(encodeOperation(info));
+    }
+
+    // init -> finish -> idle
+    //      -> fail -> ~
+    function init() public onlyGranted {
+        optRunning.produce(optIdle.consume()); // idle -> running
+    }
+
+    function finish() public onlyGranted {
+        optIdle.produce(optRunning.consume()); // running -> idle
+    }
+
+    // fail -> recover -> idle
+    //      -> truncate -> x
+    function fail() public onlyGranted {
+        optFailed.produce(optRunning.consume()); // running -> failed
+    }
+
+    function recover() public onlyGranted {
+        optIdle.produce(optFailed.consume()); // failed -> idle
+    }
+
+    function deallocate() public onlyOwner {
+        optFailed.consume(); // failed -> x
     }
 }
