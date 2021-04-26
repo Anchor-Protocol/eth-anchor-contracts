@@ -4,7 +4,17 @@ pragma solidity >=0.6.0 <0.8.0;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
-import {Operation} from "./Operation.sol";
+interface OperationStandard {
+    function initialize(bytes memory) external;
+
+    function initPayload(address, bytes32) external view returns (bytes memory);
+}
+
+interface IFactory {
+    function build(uint256 _optId, address _controller)
+        external
+        returns (address);
+}
 
 contract Factory is Ownable {
     // permission
@@ -23,7 +33,7 @@ contract Factory is Ownable {
     }
 
     // standard operations
-    mapping(uint256 => address) public standards;
+    mapping(uint256 => address) internal standards;
 
     function setStandardOperation(uint256 _optId, address _operation)
         public
@@ -32,8 +42,17 @@ contract Factory is Ownable {
         standards[_optId] = _operation;
     }
 
-    function build(uint256 _optId) public returns (address) {
+    function build(uint256 _optId, address _controller)
+        public
+        returns (address)
+    {
         require(isPermissioned(msg.sender), "Factory: not allowed");
-        return Clones.clone(standards[_optId]);
+
+        address instance = Clones.clone(standards[_optId]);
+        bytes memory payload =
+            OperationStandard(standards[_optId]).initPayload(_controller, 0x0); // TODO: make terraAddress buffer
+        OperationStandard(instance).initialize(payload);
+
+        return instance;
     }
 }
