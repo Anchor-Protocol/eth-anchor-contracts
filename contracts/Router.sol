@@ -6,53 +6,62 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
-import "./interfaces/IShuttleAsset.sol";
-import "./interfaces/IAnchorAccount.sol";
 
-import {Operation} from "./Operation.sol";
+import {IFactory} from "./Factory.sol";
+import {StdQueue} from "./utils/Queue.sol";
+import {IOperation} from "./operations/Operation.sol";
+import {IOperationStore} from "./operations/OperationStore.sol";
 
 contract Router is Ownable, Initializable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    mapping(address => address) public ContractMap;
+    mapping(address => IOperation.Status) public optStatus;
+    address public optStore;
+    uint256 public optId;
 
-    Operation[] private ContractsList;
-    IShuttleAsset public terrausd;
-    IShuttleAsset public anchorust;
+    address public wUST;
+    address public aUST;
+    address public factory;
 
-    function initialize(address _terrausd, address _anchorust)
-        public
-        initializer
-    {
-        terrausd = IShuttleAsset(_terrausd);
-        anchorust = IShuttleAsset(_anchorust);
+    function initialize(
+        address _optStore,
+        uint256 _optId,
+        address _wUST,
+        address _aUST,
+        address _factory
+    ) public initializer {
+        optStore = _optStore;
+        optId = _optId;
+        wUST = _wUST;
+        aUST = _aUST;
+        factory = _factory;
     }
 
-    // **MUST** be called after calling openzeppelin upgradable_contract_deploy_proxy
-    function migrate(address newContract, address[] memory contracts)
-        public
-        onlyOwner
-    {
-        // migrate subcontract ownership to new contract
-        for (uint256 i = 0; i < contracts.length; i++) {
-            IAnchorAccount(contracts[i]).transferOwnership(newContract);
+    function _init(
+        IOperation.Type _typ,
+        uint256 _amount,
+        bool _autoFinish
+    ) internal {
+        IOperationStore store = IOperationStore(optStore);
+        if (store.isIdleQueueEmpty()) {
+            // deploy new one
+            address instance = IFactory(factory).build(optId, address(this));
+            store.allocate(
+                IOperationStore.Info({
+                    etherAddr: instance,
+                    terraAddr: IOperation(instance).terraAddr()
+                })
+            );
         }
+        IOperation operation = IOperation(store.init(_autoFinish));
     }
 
-    // setters
-    function setUSTAddress(IShuttleAsset _terrausd) public onlyOwner {
-        terrausd = _terrausd;
-    }
+    function depositStable(uint256 _amount) public {}
 
-    function setaUSTAddress(IShuttleAsset _anchorust) public onlyOwner {
-        anchorust = _anchorust;
-    }
+    function initDepositStable() public {}
 
-    // getters
-    function getContractAddress(address _sender) public view returns (address) {
-        return ContractMap[_sender];
-    }
+    function finishDepositStable(address _operation) public {}
 
     function deployContract(address _walletAddress) public onlyOwner {
         // create new contract
