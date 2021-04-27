@@ -26,6 +26,7 @@ library StdQueue {
     }
 
     function consume(Queue storage q) internal returns (bytes memory) {
+        require(!isEmpty(q), "StdQueue: empty queue");
         bytes memory data = getItemAt(q, 0);
         q.index += 1;
         q.size -= 1;
