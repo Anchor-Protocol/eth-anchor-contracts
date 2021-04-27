@@ -8,7 +8,7 @@ import {Proxy} from "@openzeppelin/contracts/proxy/Proxy.sol";
 import {IWormhole} from "../interfaces/IWormhole.sol";
 import {WrappedAsset} from "./WrappedAsset.sol";
 
-contract WormholeAsset is Proxy, Ownable {
+contract WormholeAsset is WrappedAsset, Proxy, Ownable {
     address public wormhole;
     address public token;
     uint8 public targetChain;
@@ -31,8 +31,9 @@ contract WormholeAsset is Proxy, Ownable {
         return token;
     }
 
-    function burn(uint256 amount, bytes32 to) public {
+    function burn(uint256 amount, bytes32 to) public override {
         require(initialized(), "WormholeAsset: not initialized");
         IWormhole(wormhole).lockAssets(token, amount, to, targetChain, 0, true);
+        emit Burn(msg.sender, to, amount);
     }
 }
