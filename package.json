@@ -1,6 +1,8 @@
 {
   "name": "eth-anchor-contracts",
+  "license": "MIT",
   "scripts": {
+    "test": "hardhat test",
     "compile": "hardhat compile"
   },
   "devDependencies": {
