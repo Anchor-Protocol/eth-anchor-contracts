@@ -12,28 +12,17 @@ import {WrappedAsset} from "../assets/WrappedAsset.sol";
 
 interface IOperation {
     // Events
-    event InitDeposit(
-        address indexed sender,
-        uint256 amount,
-        bytes32 to,
-        bool autoFinish
-    );
-    event FinishDeposit(address indexed sender, uint256 amount);
-    event InitRedemption(
-        address indexed sender,
-        uint256 amount,
-        bytes32 to,
-        bool autoFinish
-    );
-    event FinishRedemption(address indexed sender, uint256 amount);
-    event FailureReported();
-    event EmergencyWithdrawActivated(address tokenAddress, uint256 amount);
-
-    // Enums
-    enum Status {IDLE, RUNNING, STOPPED}
-    enum Type {NEUTRAL, DEPOSIT, WITHDRAW}
+    event AutoFinishEnabled(address indexed operation);
+    event InitDeposit(address indexed operator, uint256 amount, bytes32 to);
+    event FinishDeposit(address indexed operator, uint256 amount);
+    event InitRedemption(address indexed operator, uint256 amount, bytes32 to);
+    event FinishRedemption(address indexed operator, uint256 amount);
+    event EmergencyWithdrawActivated(address token, uint256 amount);
 
     // Data Structure
+    enum Status {IDLE, RUNNING, STOPPED}
+    enum Type {NEUTRAL, DEPOSIT, REDEEM}
+
     struct Info {
         Status status;
         Type typ;
@@ -62,6 +51,8 @@ interface IOperation {
         bool _autoFinish
     ) external;
 
+    function finish() external;
+
     function finishDepositStable() external;
 
     function finishRedeemStable() external;
@@ -72,6 +63,7 @@ interface IOperation {
 // Operation.sol: subcontract generated per wallet, defining all relevant wrapping functions
 contract Operation is Ownable, IOperation, Initializable {
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
     using SafeERC20 for WrappedAsset;
 
     Info public DEFAULT_STATUS =
@@ -154,22 +146,22 @@ contract Operation is Ownable, IOperation, Initializable {
             wUST.safeTransferFrom(msg.sender, address(this), _amount);
             wUST.burn(_amount, terraAddress);
 
-            emit InitDeposit(_operator, _amount, terraAddress, _autoFinish);
-            return;
-        }
-
-        if (_typ == Type.WITHDRAW) {
+            emit InitDeposit(_operator, _amount, terraAddress);
+        } else if (_typ == Type.REDEEM) {
             currentStatus.input = address(aUST);
             currentStatus.output = address(wUST);
 
             aUST.safeTransferFrom(msg.sender, address(this), _amount);
             aUST.burn(_amount, terraAddress);
 
-            emit InitRedemption(_operator, _amount, terraAddress, _autoFinish);
-            return;
+            emit InitRedemption(_operator, _amount, terraAddress);
+        } else {
+            revert("Operation: invalid operation type");
         }
 
-        revert("Operation: invalid operation type");
+        if (_autoFinish) {
+            emit AutoFinishEnabled(address(this));
+        }
     }
 
     function initDepositStable(
@@ -185,10 +177,10 @@ contract Operation is Ownable, IOperation, Initializable {
         uint256 _amount,
         bool _autoFinish
     ) public override onlyController {
-        _init(Type.WITHDRAW, _operator, _amount, _autoFinish);
+        _init(Type.REDEEM, _operator, _amount, _autoFinish);
     }
 
-    function _finish() private {
+    function _finish() private returns (address, uint256) {
         // check status
         require(currentStatus.status == Status.RUNNING, "Operation: idle");
 
@@ -204,12 +196,18 @@ contract Operation is Ownable, IOperation, Initializable {
 
         if (typ == Type.DEPOSIT) {
             emit FinishDeposit(operator, amount);
-        } else if (typ == Type.WITHDRAW) {
+        } else if (typ == Type.REDEEM) {
             emit FinishRedemption(operator, amount);
         }
 
         // reset
         currentStatus = DEFAULT_STATUS;
+
+        return (address(output), amount);
+    }
+
+    function finish() public override onlyController {
+        _finish();
     }
 
     function finishDepositStable() public override onlyController {
@@ -220,11 +218,10 @@ contract Operation is Ownable, IOperation, Initializable {
         _finish();
     }
 
-    function emergencyWithdraw(address _tokenAddress)
-        public
-        override
-        onlyController
-    {
-        // TODO: finish logic
+    function emergencyWithdraw(address _token) public override onlyController {
+        IERC20(_token).safeTransfer(
+            msg.sender,
+            IERC20(_token).balanceOf(address(this))
+        );
     }
 }
