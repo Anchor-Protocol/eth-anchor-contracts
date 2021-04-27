@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.6.0 <0.8.0;
-pragma abicoder v2;
+pragma experimental ABIEncoderV2;
 
 import {StdQueue} from "../utils/Queue.sol";
 import {Operator} from "../utils/Operator.sol";
