@@ -132,7 +132,4 @@ contract Router is Ownable, Initializable {
     function finishRedeemStable(address _operation) public {
         _finish(_operation);
     }
-
-    // Events
-    event ContractDeployed(address account, address sender);
 }
