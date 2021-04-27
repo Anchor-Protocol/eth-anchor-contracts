@@ -128,7 +128,8 @@ contract Operation is Ownable, IOperation, Initializable {
         uint256 _amount,
         bool _autoFinish
     ) private {
-        require(currentStatus.status == Status.IDLE, "Operation: busy");
+        require(currentStatus.status == Status.IDLE, "Operation: running");
+        require(_amount >= 10 ether, "Operation: amount must be more than 10");
 
         currentStatus = Info({
             status: Status.RUNNING,
