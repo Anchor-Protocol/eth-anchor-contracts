@@ -7,21 +7,32 @@ import {Proxy} from "@openzeppelin/contracts/proxy/Proxy.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
 import {IWormhole} from "../interfaces/IWormhole.sol";
+import {IWormholeAssetFactory} from "./WormholeAssetFactory.sol";
 import {WrappedAsset} from "./WrappedAsset.sol";
+
+interface IWormholeAsset {
+    function initalize(
+        address _factory,
+        address _token,
+        uint8 _targetChain
+    ) external;
+
+    function burn(uint256 amount, bytes32 to) external;
+}
 
 contract WormholeAsset is Initializable, Proxy, Ownable {
     event Burn(address indexed _sender, bytes32 indexed _to, uint256 amount);
 
-    address public wormhole;
+    address public factory;
     address public token;
     uint8 public targetChain;
 
     function initalize(
-        address _wormhole,
+        address _factory,
         address _token,
         uint8 _targetChain
     ) public initializer {
-        wormhole = _wormhole;
+        factory = _factory;
         token = _token;
         targetChain = _targetChain;
     }
@@ -31,7 +42,14 @@ contract WormholeAsset is Initializable, Proxy, Ownable {
     }
 
     function burn(uint256 amount, bytes32 to) public {
-        IWormhole(wormhole).lockAssets(token, amount, to, targetChain, 0, true);
+        IWormhole(IWormholeAssetFactory(factory).wormhole()).lockAssets(
+            token,
+            amount,
+            to,
+            targetChain,
+            0,
+            true
+        );
         emit Burn(msg.sender, to, amount);
     }
 }
