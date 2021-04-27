@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.6.0 <0.8.0;
+pragma abicoder v2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -16,26 +17,39 @@ contract Router is Ownable, Initializable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    mapping(address => IOperation.Status) public optStatus;
+    // operation
     address public optStore;
-    uint256 public optId;
+    uint256 public optStdId;
+    address public factory;
 
+    // constant
     address public wUST;
     address public aUST;
-    address public factory;
+
+    // acl
+    address public bot;
 
     function initialize(
         address _optStore,
-        uint256 _optId,
+        uint256 _optStdId,
         address _wUST,
         address _aUST,
         address _factory
     ) public initializer {
         optStore = _optStore;
-        optId = _optId;
+        optStdId = _optStdId;
+        factory = _factory;
         wUST = _wUST;
         aUST = _aUST;
-        factory = _factory;
+        bot = msg.sender;
+    }
+
+    function setOperationId(uint256 _optStdId) public onlyOwner {
+        optStdId = _optStdId;
+    }
+
+    function setBotAddress(address _bot) public onlyOwner {
+        bot = _bot;
     }
 
     function _init(
@@ -46,42 +60,77 @@ contract Router is Ownable, Initializable {
         IOperationStore store = IOperationStore(optStore);
         if (store.isIdleQueueEmpty()) {
             // deploy new one
-            address instance = IFactory(factory).build(optId, address(this));
+            address instance = IFactory(factory).build(optStdId, address(this));
             store.allocate(
                 IOperationStore.Info({
                     etherAddr: instance,
-                    terraAddr: IOperation(instance).terraAddr()
+                    terraAddr: IOperation(instance).terraAddress()
                 })
             );
+            IERC20(wUST).safeApprove(instance, type(uint256).max);
+            IERC20(aUST).safeApprove(instance, type(uint256).max);
         }
         IOperation operation = IOperation(store.init(_autoFinish));
+
+        if (_typ == IOperation.Type.DEPOSIT) {
+            IERC20(wUST).safeTransferFrom(msg.sender, address(this), _amount);
+            operation.initDepositStable(msg.sender, _amount, _autoFinish);
+            return;
+        }
+
+        if (_typ == IOperation.Type.REDEEM) {
+            IERC20(aUST).safeTransferFrom(msg.sender, address(this), _amount);
+            operation.initRedeemStable(msg.sender, _amount, _autoFinish);
+            return;
+        }
+
+        revert("Router: invalid operation type");
     }
 
-    function depositStable(uint256 _amount) public {}
+    function _finish(address _opt) internal {
+        IOperationStore.Status status =
+            IOperationStore(optStore).getStatusOf(_opt);
 
-    function initDepositStable() public {}
+        if (status == IOperationStore.Status.RUNNING_MANUAL) {
+            require(
+                IOperation(_opt).getCurrentStatus().operator == msg.sender,
+                "Router: invalid sender"
+            );
 
-    function finishDepositStable(address _operation) public {}
+            IOperation(_opt).finish();
+            IOperationStore(optStore).finish(_opt);
+        } else if (status == IOperationStore.Status.RUNNING_AUTO) {
+            require(bot == msg.sender, "Router: invalid sender");
 
-    function deployContract(address _walletAddress) public onlyOwner {
-        // create new contract
-        Operation accountContract = new Operation();
-        accountContract.initialize(
-            address(this),
-            msg.sender,
-            _walletAddress,
-            address(terrausd),
-            address(anchorust)
-        );
-        // append to map
-        ContractMap[_walletAddress] = address(accountContract);
-        ContractsList.push(accountContract);
-        // emit contractdeployed event
-        emit ContractDeployed(address(accountContract), _walletAddress);
+            IOperation(_opt).finish();
+            IOperationStore(optStore).finish(_opt);
+        } else {
+            revert("Router: invalid status for finish");
+        }
     }
 
-    function reportFailure() public onlyOwner {
-        IAnchorAccount(ContractMap[msg.sender]).reportFailure();
+    function depositStable(uint256 _amount) public {
+        _init(IOperation.Type.DEPOSIT, _amount, true);
+    }
+
+    function initDepositStable(uint256 _amount) public {
+        _init(IOperation.Type.DEPOSIT, _amount, false);
+    }
+
+    function finishDepositStable(address _operation) public {
+        _finish(_operation);
+    }
+
+    function redeemStable(uint256 _amount) public {
+        _init(IOperation.Type.REDEEM, _amount, true);
+    }
+
+    function initRedeemStable(uint256 _amount) public {
+        _init(IOperation.Type.REDEEM, _amount, false);
+    }
+
+    function finishRedeemStable(address _operation) public {
+        _finish(_operation);
     }
 
     // Events
