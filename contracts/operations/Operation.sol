@@ -228,7 +228,11 @@ contract Operation is Ownable, IOperation, Initializable {
     }
 
     function recover() public override onlyController {
-        currentStatus.status = Status.RUNNING;
+        if (currentStatus.operator == address(0x0)) {
+            currentStatus.status = Status.IDLE;
+        } else {
+            currentStatus.status = Status.RUNNING;
+        }
     }
 
     function emergencyWithdraw(address _token, address _to)
