@@ -2,6 +2,18 @@ import { Block, JsonRpcProvider, Provider } from "@ethersproject/providers";
 import { ethers } from "hardhat";
 import { ParamType } from "ethers/lib/utils";
 
+export async function filterStructFields(
+  filterer: string[],
+  p: Promise<Array<any>[]>
+): Promise<any> {
+  return Object.entries(await p).reduce((acc, [k, v]) => {
+    if (filterer.includes(k)) {
+      acc[k] = v;
+    }
+    return acc;
+  }, {} as { [key: string]: any });
+}
+
 export function encodeParameters(
   types: Array<string | ParamType>,
   values: Array<any>
