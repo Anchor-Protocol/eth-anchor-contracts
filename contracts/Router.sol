@@ -78,15 +78,10 @@ contract Router is IRouter, Ownable, Initializable {
         bool _autoFinish
     ) internal {
         IOperationStore store = IOperationStore(optStore);
-        if (store.isIdleQueueEmpty()) {
+        if (store.getAvailableOperation() == address(0x0)) {
             // deploy new one
             address instance = IFactory(factory).build(optStdId, address(this));
-            store.allocate(
-                IOperationStore.Info({
-                    etherAddr: instance,
-                    terraAddr: IOperation(instance).terraAddress()
-                })
-            );
+            store.allocate(instance);
             IERC20(wUST).safeApprove(instance, type(uint256).max);
             IERC20(aUST).safeApprove(instance, type(uint256).max);
         }

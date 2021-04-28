@@ -9,20 +9,20 @@ contract QueueTester {
     StdQueue.Queue public queue;
 
     function isEmpty() public view returns (bool) {
-        return queue.isEmpty();
+        return queue._isEmpty();
     }
 
-    function getItemAt(uint256 _index) public view returns (bytes memory) {
-        return queue.getItemAt(_index);
+    function getItemAt(uint256 _index) public view returns (bytes32) {
+        return queue._getItemAt(_index);
     }
 
-    function produce(bytes memory _data) public {
-        queue.produce(_data);
+    function produce(bytes32 _data) public {
+        queue._produce(_data);
     }
 
     function consume() public {
-        emit Consumed(queue.consume());
+        emit Consumed(queue._consume());
     }
 
-    event Consumed(bytes);
+    event Consumed(bytes32);
 }
