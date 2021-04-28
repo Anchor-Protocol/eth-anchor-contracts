@@ -143,6 +143,7 @@ describe("Operation", () => {
       expect(await aUST.balanceOf(owner.address)).to.eq(0);
       expect(await aUST.balanceOf(controller.address)).to.eq(amount.mul(2));
     });
+
     it("redeem stable", async () => {
       await expect(
         operation
@@ -180,6 +181,77 @@ describe("Operation", () => {
 
       expect(await wUST.balanceOf(owner.address)).to.eq(0);
       expect(await wUST.balanceOf(controller.address)).to.eq(amount.mul(2));
+    });
+
+    it("fail / recover", async () => {
+      let currentStatus;
+
+      // ============================= 0 -> 2 -> 0
+
+      await wUST.connect(controller).transfer(operation.address, amount);
+      await expect(
+        operation
+          .connect(controller)
+          .emergencyWithdraw(wUST.address, controller.address)
+      ).to.revertedWith("Operation: not an emergency");
+
+      await operation.connect(controller).fail();
+
+      currentStatus = await filterStructFields(
+        operationInfoFields,
+        operation.getCurrentStatus()
+      );
+      expect(currentStatus.status).to.eq(2);
+
+      await operation
+        .connect(controller)
+        .emergencyWithdraw(wUST.address, controller.address);
+      expect(await wUST.balanceOf(controller.address)).to.eq(amount);
+
+      await operation.connect(controller).recover();
+
+      currentStatus = await filterStructFields(
+        operationInfoFields,
+        operation.getCurrentStatus()
+      );
+      expect(currentStatus.status).to.eq(0);
+
+      // ============================= 1 -> 2 -> 1
+
+      await operation
+        .connect(controller)
+        .initDepositStable(controller.address, amount, true);
+      await wUST.connect(owner).transfer(operation.address, amount);
+      await operation.connect(controller).fail();
+
+      currentStatus = await filterStructFields(
+        operationInfoFields,
+        operation.getCurrentStatus()
+      );
+      expect(currentStatus.status).to.eq(2);
+
+      await expect(
+        operation
+          .connect(controller)
+          .emergencyWithdraw(aUST.address, controller.address)
+      ).to.revertedWith("Operation: withdrawal rejected");
+
+      await operation
+        .connect(controller)
+        .emergencyWithdraw(wUST.address, controller.address);
+      expect(await wUST.balanceOf(controller.address)).to.eq(amount);
+
+      await aUST.connect(owner).transfer(operation.address, amount);
+      await operation.connect(controller).recover();
+
+      currentStatus = await filterStructFields(
+        operationInfoFields,
+        operation.getCurrentStatus()
+      );
+      expect(currentStatus.status).to.eq(1);
+
+      await operation.connect(controller).finish();
+      expect(await aUST.balanceOf(controller.address)).to.eq(amount.mul(2));
     });
   });
 });
