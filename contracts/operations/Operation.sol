@@ -245,6 +245,13 @@ contract Operation is Ownable, IOperation, Initializable {
             "Operation: not an emergency"
         );
 
+        if (currentStatus.operator != address(0x0)) {
+            require(
+                currentStatus.output != _token,
+                "Operation: withdrawal rejected"
+            );
+        }
+
         IERC20(_token).safeTransfer(
             _to,
             IERC20(_token).balanceOf(address(this))
