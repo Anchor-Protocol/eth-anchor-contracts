@@ -13,6 +13,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import {
   advanceTimeAndBlock,
+  encodeParameters,
   filterStructFields,
   latestBlocktime,
 } from "../shared/utilities";
@@ -21,7 +22,6 @@ chai.use(solidity);
 
 const ETH = utils.parseEther("1");
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
-const abiEncoder = new utils.AbiCoder();
 
 describe("Operation", () => {
   const { provider } = ethers;
@@ -62,7 +62,7 @@ describe("Operation", () => {
     await operation
       .connect(owner)
       .initialize(
-        abiEncoder.encode(
+        encodeParameters(
           ["address", "bytes32", "address", "address"],
           [controller.address, hash1, wUST.address, aUST.address]
         )
@@ -77,7 +77,7 @@ describe("Operation", () => {
 
   it("initialize", async () => {
     expect(await operation.initPayload(owner.address, hash2)).to.eq(
-      abiEncoder.encode(
+      encodeParameters(
         ["address", "bytes32", "address", "address"],
         [controller.address, hash2, wUST.address, aUST.address]
       )
