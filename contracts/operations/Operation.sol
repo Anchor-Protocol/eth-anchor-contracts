@@ -229,7 +229,6 @@ contract Operation is Ownable, IOperation, Initializable {
 
     function recover() public override onlyController {
         currentStatus.status = Status.RUNNING;
-        _finish();
     }
 
     function emergencyWithdraw(address _token, address _to)
