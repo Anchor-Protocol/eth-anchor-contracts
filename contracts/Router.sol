@@ -92,21 +92,24 @@ contract Router is Ownable, Initializable {
             IOperationStore(optStore).getStatusOf(_opt);
 
         if (status == IOperationStore.Status.RUNNING_MANUAL) {
+            // check msg.sender
             require(
                 IOperation(_opt).getCurrentStatus().operator == msg.sender,
                 "Router: invalid sender"
             );
-
-            IOperation(_opt).finish();
-            IOperationStore(optStore).finish(_opt);
         } else if (status == IOperationStore.Status.RUNNING_AUTO) {
-            require(bot == msg.sender, "Router: invalid sender");
-
-            IOperation(_opt).finish();
-            IOperationStore(optStore).finish(_opt);
+            // check msg.sender || bot
+            require(
+                IOperation(_opt).getCurrentStatus().operator == msg.sender ||
+                    bot == msg.sender,
+                "Router: invalid sender"
+            );
         } else {
             revert("Router: invalid status for finish");
         }
+
+        IOperation(_opt).finish();
+        IOperationStore(optStore).finish(_opt);
     }
 
     function depositStable(uint256 _amount) public {
@@ -131,5 +134,29 @@ contract Router is Ownable, Initializable {
 
     function finishRedeemStable(address _operation) public {
         _finish(_operation);
+    }
+
+    function fail(address _opt) public {
+        require(
+            msg.sender == owner() || msg.sender == bot,
+            "Router: access denied"
+        );
+
+        IOperation(_opt).fail();
+        IOperationStore(optStore).fail(_opt);
+    }
+
+    function recover(address _opt) public {
+        require(
+            msg.sender == owner() || msg.sender == bot,
+            "Router: access denied"
+        );
+
+        IOperation(_opt).recover();
+        IOperationStore(optStore).recover(_opt);
+    }
+
+    function emergencyWithdraw(address _opt, address _token) public onlyOwner {
+        IOperation(_opt).emergencyWithdraw(_token, msg.sender);
     }
 }
