@@ -1,5 +1,6 @@
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
+import "hardhat-gas-reporter";
 
 import { Networks, EtherscanAPIKey } from "./local.config";
 
@@ -26,5 +27,8 @@ export default {
   },
   etherscan: {
     apiKey: EtherscanAPIKey,
+  },
+  gasReporter: {
+    currency: "USD",
   },
 };
