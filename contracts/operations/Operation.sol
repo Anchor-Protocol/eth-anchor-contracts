@@ -57,6 +57,10 @@ interface IOperation {
 
     function finishRedeemStable() external;
 
+    function fail() external;
+
+    function recover() external;
+
     function emergencyWithdraw(address _tokenAddress) external;
 }
 
@@ -219,7 +223,21 @@ contract Operation is Ownable, IOperation, Initializable {
         _finish();
     }
 
+    function fail() public override onlyController {
+        currentStatus.status = Status.STOPPED;
+    }
+
+    function recover() public override onlyController {
+        currentStatus.status = Status.RUNNING;
+        _finish();
+    }
+
     function emergencyWithdraw(address _token) public override onlyController {
+        require(
+            currentStatus.status == Status.STOPPED,
+            "Operation: not an emergency"
+        );
+
         IERC20(_token).safeTransfer(
             msg.sender,
             IERC20(_token).balanceOf(address(this))
