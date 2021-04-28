@@ -61,7 +61,7 @@ interface IOperation {
 
     function recover() external;
 
-    function emergencyWithdraw(address _tokenAddress) external;
+    function emergencyWithdraw(address _token, address _to) external;
 }
 
 // Operation.sol: subcontract generated per wallet, defining all relevant wrapping functions
@@ -232,14 +232,18 @@ contract Operation is Ownable, IOperation, Initializable {
         _finish();
     }
 
-    function emergencyWithdraw(address _token) public override onlyController {
+    function emergencyWithdraw(address _token, address _to)
+        public
+        override
+        onlyController
+    {
         require(
             currentStatus.status == Status.STOPPED,
             "Operation: not an emergency"
         );
 
         IERC20(_token).safeTransfer(
-            msg.sender,
+            _to,
             IERC20(_token).balanceOf(address(this))
         );
     }
