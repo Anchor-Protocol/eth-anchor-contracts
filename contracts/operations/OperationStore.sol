@@ -167,7 +167,6 @@ contract OperationStore is IOperationStore, Operator {
 
         if (status == Status.RUNNING_MANUAL) {
             allocate(_opt);
-            optStat[_opt] = Status.IDLE;
         } else if (status == Status.RUNNING_AUTO) {
             // wait for flush
             optStat[_opt] = Status.FINISHED;
