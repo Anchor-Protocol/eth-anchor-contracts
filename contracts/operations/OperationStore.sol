@@ -100,6 +100,9 @@ contract OperationStore is IOperationStore, Operator {
     StdQueue.AddressQueue internal optRunning;
 
     function getAvailableOperation() public view override returns (address) {
+        if (optIdle.length() == 0) {
+            return address(0x0);
+        }
         return optIdle.at(0);
     }
 
