@@ -202,6 +202,7 @@ contract OperationStore is IOperationStore, Operator {
         Status stat = optStat[opt];
         if (stat == Status.FINISHED) {
             optIdle.add(_queue.consume());
+            optStat[opt] = Status.IDLE;
             emit OperationFlushed(msg.sender, opt, Queue.RUNNING, Queue.IDLE);
         } else if (stat == Status.FAILED) {
             optFailed.produce(_queue.consume());
@@ -232,6 +233,7 @@ contract OperationStore is IOperationStore, Operator {
         Status stat = optStat[opt];
         if (stat == Status.RECOVERED) {
             optIdle.add(_queue.consume());
+            optStat[opt] = Status.IDLE;
             emit OperationFlushed(msg.sender, opt, Queue.FAILED, Queue.IDLE);
         } else if (stat == Status.DEALLOCATED) {
             _queue.consume();
