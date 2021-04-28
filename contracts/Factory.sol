@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.6.0 <0.8.0;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
+
+import {Operator} from "./utils/Operator.sol";
 
 interface OperationStandard {
     function initialize(bytes memory) external;
@@ -23,7 +24,7 @@ interface IFactory {
         returns (address);
 }
 
-contract Factory is IFactory, Ownable {
+contract Factory is IFactory, Operator {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     // permission
@@ -73,6 +74,7 @@ contract Factory is IFactory, Ownable {
     function build(uint256 _optId, address _controller)
         public
         override
+        onlyGranted
         returns (address)
     {
         require(isPermissioned(msg.sender), "Factory: not allowed");
