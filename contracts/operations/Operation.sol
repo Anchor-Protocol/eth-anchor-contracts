@@ -131,7 +131,7 @@ contract Operation is Ownable, IOperation, Initializable {
         address _operator,
         uint256 _amount,
         bool _autoFinish
-    ) private {
+    ) private checkStopped {
         require(currentStatus.status == Status.IDLE, "Operation: running");
         require(_amount >= 10 ether, "Operation: amount must be more than 10");
 
@@ -185,7 +185,7 @@ contract Operation is Ownable, IOperation, Initializable {
         _init(Type.REDEEM, _operator, _amount, _autoFinish);
     }
 
-    function _finish() private returns (address, uint256) {
+    function _finish() private checkStopped returns (address, uint256) {
         // check status
         require(currentStatus.status == Status.RUNNING, "Operation: idle");
 
