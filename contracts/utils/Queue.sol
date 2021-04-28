@@ -5,31 +5,83 @@ library StdQueue {
     struct Queue {
         uint256 index;
         uint256 size;
-        mapping(uint256 => bytes) store;
+        mapping(uint256 => bytes32) store;
     }
 
-    function isEmpty(Queue storage q) internal view returns (bool) {
+    function _isEmpty(Queue storage q) internal view returns (bool) {
         return q.size == 0;
     }
 
-    function getItemAt(Queue storage q, uint256 index)
+    function _getItemAt(Queue storage q, uint256 index)
         internal
         view
-        returns (bytes memory)
+        returns (bytes32)
     {
         return q.store[q.index + index];
     }
 
-    function produce(Queue storage q, bytes memory data) internal {
+    function _produce(Queue storage q, bytes32 data) internal {
         q.store[q.index + q.size] = data;
         q.size += 1;
     }
 
-    function consume(Queue storage q) internal returns (bytes memory) {
-        require(!isEmpty(q), "StdQueue: empty queue");
-        bytes memory data = getItemAt(q, 0);
+    function _consume(Queue storage q) internal returns (bytes32) {
+        require(!_isEmpty(q), "StdQueue: empty queue");
+        bytes32 data = _getItemAt(q, 0);
         q.index += 1;
         q.size -= 1;
         return data;
+    }
+
+    // ====================== Bytes32 ====================== //
+
+    struct Bytes32Queue {
+        Queue _inner;
+    }
+
+    function isEmpty(Bytes32Queue storage queue) internal view returns (bool) {
+        return _isEmpty(queue._inner);
+    }
+
+    function getItemAt(Bytes32Queue storage queue, uint256 _index)
+        internal
+        view
+        returns (bytes32)
+    {
+        return _getItemAt(queue._inner, _index);
+    }
+
+    function produce(Bytes32Queue storage queue, bytes32 _value) internal {
+        _produce(queue._inner, _value);
+    }
+
+    function consume(Bytes32Queue storage queue) internal returns (bytes32) {
+        return _consume(queue._inner);
+    }
+
+    // ====================== Address ====================== //
+
+    struct AddressQueue {
+        Queue _inner;
+    }
+
+    function isEmpty(AddressQueue storage queue) internal view returns (bool) {
+        return _isEmpty(queue._inner);
+    }
+
+    function getItemAt(AddressQueue storage queue, uint256 _index)
+        internal
+        view
+        returns (address)
+    {
+        return address(uint160(uint256(_getItemAt(queue._inner, _index))));
+    }
+
+    function produce(AddressQueue storage queue, address _value) internal {
+        _produce(queue._inner, bytes32(uint256(uint160(_value))));
+    }
+
+    function consume(AddressQueue storage queue) internal returns (address) {
+        return address(uint256(bytes32(_consume(queue._inner))));
     }
 }
