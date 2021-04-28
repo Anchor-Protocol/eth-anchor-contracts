@@ -24,11 +24,6 @@ interface IOperationStore {
         address indexed operation,
         bytes32 indexed terraAddr
     );
-    event OperationFlushed(
-        address indexed controller,
-        address indexed operation,
-        bytes32 indexed terraAddr
-    );
     event OperationFailed(
         address indexed controller,
         address indexed operation,
@@ -44,9 +39,26 @@ interface IOperationStore {
         address indexed operation,
         bytes32 indexed terraAddr
     );
+    event OperationFlushed(
+        address indexed controller,
+        address indexed operation,
+        bytes32 indexed terraAddr,
+        Queue from,
+        Queue to
+    );
 
     // Data Structure
-    enum Status {IDLE, RUNNING_AUTO, RUNNING_MANUAL, FINISHED, FAILED}
+    enum Status {
+        IDLE,
+        RUNNING_AUTO,
+        RUNNING_MANUAL,
+        FINISHED,
+        FAILED,
+        RECOVERED,
+        DEALLOCATED
+    }
+
+    enum Queue {IDLE, RUNNING, FAILED, BLACKHOLE}
 
     struct Info {
         address etherAddr;
@@ -84,13 +96,15 @@ interface IOperationStore {
 
     function finish(address _opt) external;
 
-    function flush(uint256 _amount) external;
+    function fail(address _opt) external;
 
-    function fail() external;
+    function recover(address _opt) external;
 
-    function recover() external;
+    function deallocate(address _opt) external;
 
-    function deallocate() external;
+    function flush(Queue queue, uint256 _amount) external;
+
+    function flushAll(uint256 _amount) external;
 }
 
 contract OperationStore is IOperationStore, Operator {
@@ -224,46 +238,113 @@ contract OperationStore is IOperationStore, Operator {
         );
     }
 
-    function flush(uint256 _amount) public override onlyGranted {
-        for (uint256 i = 0; i < _amount; i++) {
-            if (isRunningQueueEmpty()) {
-                return;
-            }
+    // fail -> recover -> idle
+    //      -> truncate -> x
+    function fail(address _opt) public override onlyGranted {
+        optStat[_opt] = Status.FAILED;
+        emit OperationFailed(msg.sender, _opt, IOperation(_opt).terraAddress());
+    }
 
-            Info memory info = getRunningOperationAt(0);
-            if (optStat[info.etherAddr] == Status.FINISHED) {
-                optIdle.produce(optRunning.consume());
-                emit OperationFlushed(
-                    msg.sender,
-                    info.etherAddr,
-                    info.terraAddr
-                );
-            } else {
-                return;
-            }
+    function flushRunningQueue(StdQueue.Queue storage _queue) internal {
+        if (_queue.isEmpty()) {
+            return;
+        }
+
+        Info memory info = decodeOperation(_queue.getItemAt(0));
+        Status stat = optStat[info.etherAddr];
+        if (stat == Status.FINISHED) {
+            optIdle.produce(_queue.consume());
+            emit OperationFlushed(
+                msg.sender,
+                info.etherAddr,
+                info.terraAddr,
+                Queue.RUNNING,
+                Queue.IDLE
+            );
+        } else if (stat == Status.FAILED) {
+            optFailed.produce(_queue.consume());
+            emit OperationFlushed(
+                msg.sender,
+                info.etherAddr,
+                info.terraAddr,
+                Queue.RUNNING,
+                Queue.FAILED
+            );
+        } else {
+            return;
         }
     }
 
-    // fail -> recover -> idle
-    //      -> truncate -> x
-    function fail() public override onlyGranted {
-        bytes memory rawInfo = optRunning.consume();
-        optFailed.produce(rawInfo); // running -> failed
-        Info memory info = decodeOperation(rawInfo);
-        optStat[info.etherAddr] = Status.FAILED;
-        emit OperationFailed(msg.sender, info.etherAddr, info.terraAddr);
+    function recover(address _opt) public override onlyGranted {
+        optStat[_opt] = Status.RECOVERED;
+        emit OperationRecovered(
+            msg.sender,
+            _opt,
+            IOperation(_opt).terraAddress()
+        );
     }
 
-    function recover() public override onlyGranted {
-        bytes memory rawInfo = optFailed.consume();
-        optIdle.produce(rawInfo); // failed -> idle
-        Info memory info = decodeOperation(rawInfo);
-        optStat[info.etherAddr] = Status.IDLE;
-        emit OperationRecovered(msg.sender, info.etherAddr, info.terraAddr);
+    function deallocate(address _opt) public override onlyOwner {
+        optStat[_opt] = Status.DEALLOCATED;
+        emit OperationDeallocated(
+            msg.sender,
+            _opt,
+            IOperation(_opt).terraAddress()
+        );
     }
 
-    function deallocate() public override onlyOwner {
-        Info memory info = decodeOperation(optFailed.consume()); // failed -> x
-        emit OperationDeallocated(msg.sender, info.etherAddr, info.terraAddr);
+    function flushFailedQueue(StdQueue.Queue storage _queue) internal {
+        if (_queue.isEmpty()) {
+            return;
+        }
+
+        Info memory info = decodeOperation(_queue.getItemAt(0));
+        Status stat = optStat[info.etherAddr];
+        if (stat == Status.RECOVERED) {
+            optIdle.produce(_queue.consume());
+            emit OperationFlushed(
+                msg.sender,
+                info.etherAddr,
+                info.terraAddr,
+                Queue.FAILED,
+                Queue.IDLE
+            );
+        } else if (stat == Status.DEALLOCATED) {
+            _queue.consume();
+            emit OperationFlushed(
+                msg.sender,
+                info.etherAddr,
+                info.terraAddr,
+                Queue.FAILED,
+                Queue.BLACKHOLE
+            );
+        } else {
+            return;
+        }
+    }
+
+    function _flush(
+        StdQueue.Queue storage _queue,
+        uint256 _amount,
+        function(StdQueue.Queue storage) _handler
+    ) internal {
+        for (uint256 i = 0; i < _amount; i++) {
+            _handler(_queue);
+        }
+    }
+
+    function flush(Queue _queue, uint256 _amount) public override onlyGranted {
+        if (_queue == Queue.RUNNING) {
+            _flush(optRunning, _amount, flushRunningQueue);
+        } else if (_queue == Queue.FAILED) {
+            _flush(optRunning, _amount, flushFailedQueue);
+        } else {
+            revert("OperationStore: invalid queue type");
+        }
+    }
+
+    function flushAll(uint256 _amount) public override onlyGranted {
+        flush(Queue.RUNNING, _amount);
+        flush(Queue.FAILED, _amount);
     }
 }
