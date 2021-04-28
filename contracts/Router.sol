@@ -13,7 +13,27 @@ import {StdQueue} from "./utils/Queue.sol";
 import {IOperation} from "./operations/Operation.sol";
 import {IOperationStore} from "./operations/OperationStore.sol";
 
-contract Router is Ownable, Initializable {
+interface IRouter {
+    function depositStable(uint256 _amount) external;
+
+    function initDepositStable(uint256 _amount) external;
+
+    function finishDepositStable(address _operation) external;
+
+    function redeemStable(uint256 _amount) external;
+
+    function initRedeemStable(uint256 _amount) external;
+
+    function finishRedeemStable(address _operation) external;
+
+    function fail(address _opt) external;
+
+    function recover(address _opt, bool _runFinish) external;
+
+    function emergencyWithdraw(address _opt, address _token) external;
+}
+
+contract Router is IRouter, Ownable, Initializable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -112,31 +132,31 @@ contract Router is Ownable, Initializable {
         IOperationStore(optStore).finish(_opt);
     }
 
-    function depositStable(uint256 _amount) public {
+    function depositStable(uint256 _amount) public override {
         _init(IOperation.Type.DEPOSIT, _amount, true);
     }
 
-    function initDepositStable(uint256 _amount) public {
+    function initDepositStable(uint256 _amount) public override {
         _init(IOperation.Type.DEPOSIT, _amount, false);
     }
 
-    function finishDepositStable(address _operation) public {
+    function finishDepositStable(address _operation) public override {
         _finish(_operation);
     }
 
-    function redeemStable(uint256 _amount) public {
+    function redeemStable(uint256 _amount) public override {
         _init(IOperation.Type.REDEEM, _amount, true);
     }
 
-    function initRedeemStable(uint256 _amount) public {
+    function initRedeemStable(uint256 _amount) public override {
         _init(IOperation.Type.REDEEM, _amount, false);
     }
 
-    function finishRedeemStable(address _operation) public {
+    function finishRedeemStable(address _operation) public override {
         _finish(_operation);
     }
 
-    function fail(address _opt) public {
+    function fail(address _opt) public override {
         require(
             msg.sender == owner() || msg.sender == bot,
             "Router: access denied"
@@ -146,7 +166,7 @@ contract Router is Ownable, Initializable {
         IOperationStore(optStore).fail(_opt);
     }
 
-    function recover(address _opt) public {
+    function recover(address _opt, bool _runFinish) public override {
         require(
             msg.sender == owner() || msg.sender == bot,
             "Router: access denied"
@@ -154,9 +174,17 @@ contract Router is Ownable, Initializable {
 
         IOperation(_opt).recover();
         IOperationStore(optStore).recover(_opt);
+
+        if (_runFinish) {
+            IOperation(_opt).finish();
+        }
     }
 
-    function emergencyWithdraw(address _opt, address _token) public onlyOwner {
+    function emergencyWithdraw(address _opt, address _token)
+        public
+        override
+        onlyOwner
+    {
         IOperation(_opt).emergencyWithdraw(_token, msg.sender);
     }
 }
