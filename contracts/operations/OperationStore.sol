@@ -195,11 +195,10 @@ contract OperationStore is IOperationStore, Operator {
         emit OperationFailed(msg.sender, _opt);
     }
 
-    function flushRunningQueue(StdQueue.AddressQueue storage _queue) internal {
-        if (_queue.isEmpty()) {
-            return;
-        }
-
+    function flushRunningQueue(StdQueue.AddressQueue storage _queue)
+        internal
+        returns (bool)
+    {
         address opt = _queue.getItemAt(0);
         Status stat = optStat[opt];
         if (stat == Status.FINISHED) {
@@ -210,8 +209,9 @@ contract OperationStore is IOperationStore, Operator {
             optFailed.produce(_queue.consume());
             emit OperationFlushed(msg.sender, opt, Queue.RUNNING, Queue.FAILED);
         } else {
-            return;
+            return false;
         }
+        return true;
     }
 
     // =========================== FAIL QUEUE OPERATIONS =========================== //
@@ -226,11 +226,10 @@ contract OperationStore is IOperationStore, Operator {
         emit OperationDeallocated(msg.sender, _opt);
     }
 
-    function flushFailedQueue(StdQueue.AddressQueue storage _queue) internal {
-        if (_queue.isEmpty()) {
-            return;
-        }
-
+    function flushFailedQueue(StdQueue.AddressQueue storage _queue)
+        internal
+        returns (bool)
+    {
         address opt = _queue.getItemAt(0);
         Status stat = optStat[opt];
         if (stat == Status.RECOVERED) {
@@ -246,17 +245,25 @@ contract OperationStore is IOperationStore, Operator {
                 Queue.BLACKHOLE
             );
         } else {
-            return;
+            return false;
         }
+
+        return true;
     }
 
     function _flush(
         StdQueue.AddressQueue storage _queue,
         uint256 _amount,
-        function(StdQueue.AddressQueue storage) _handler
+        function(StdQueue.AddressQueue storage) returns (bool) _handler
     ) internal {
         for (uint256 i = 0; i < _amount; i++) {
-            _handler(_queue);
+            if (_queue.isEmpty()) {
+                return;
+            }
+
+            if (!_handler(_queue)) {
+                return;
+            }
         }
     }
 
