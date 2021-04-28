@@ -35,6 +35,10 @@ async function main() {
   console.log(`waiting ${tx.hash}`);
   await provider.waitForTransaction(tx.hash, 2);
 
+  tx = await store.connect(operator).transferOperator(router.address);
+  console.log(`waiting ${tx.hash}`);
+  await provider.waitForTransaction(tx.hash, 2);
+
   tx = await router
     .connect(operator)
     .initialize(store.address, 0, ropsten.UST, ropsten.aUST, factory.address);
