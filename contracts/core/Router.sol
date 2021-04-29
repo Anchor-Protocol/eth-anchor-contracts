@@ -5,15 +5,17 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
 import {StdQueue} from "../utils/Queue.sol";
+import {Operator} from "../utils/Operator.sol";
 import {IOperation} from "../operations/Operation.sol";
 import {IOperationStore} from "../operations/OperationStore.sol";
 import {IOperationFactory} from "../operations/OperationFactory.sol";
 
 interface IRouter {
+    // ======================= public access
+
     function depositStable(uint256 _amount) external;
 
     function initDepositStable(uint256 _amount) external;
@@ -26,6 +28,10 @@ interface IRouter {
 
     function finishRedeemStable(address _operation) external;
 
+    // ======================= limited access
+
+    function allocate(uint256 _amount) external;
+
     function fail(address _opt) external;
 
     function recover(address _opt, bool _runFinish) external;
@@ -33,7 +39,7 @@ interface IRouter {
     function emergencyWithdraw(address _opt, address _token) external;
 }
 
-contract Router is IRouter, Ownable, Initializable {
+contract Router is IRouter, Operator, Initializable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -61,15 +67,10 @@ contract Router is IRouter, Ownable, Initializable {
         factory = _factory;
         wUST = _wUST;
         aUST = _aUST;
-        bot = msg.sender;
     }
 
     function setOperationId(uint256 _optStdId) public onlyOwner {
         optStdId = _optStdId;
-    }
-
-    function setBotAddress(address _bot) public onlyOwner {
-        bot = _bot;
     }
 
     function _init(
@@ -152,22 +153,27 @@ contract Router is IRouter, Ownable, Initializable {
         _finish(_operation);
     }
 
-    function fail(address _opt) public override {
-        require(
-            msg.sender == owner() || msg.sender == bot,
-            "Router: access denied"
-        );
+    function allocate(uint256 _amount) public override onlyGranted {
+        for (uint256 i = 0; i < _amount; i++) {
+            // deploy new one
+            address instance =
+                IOperationFactory(factory).build(optStdId, address(this));
+            IOperationStore(optStore).allocate(instance);
+            IERC20(wUST).safeApprove(instance, type(uint256).max);
+            IERC20(aUST).safeApprove(instance, type(uint256).max);
+        }
+    }
 
+    function fail(address _opt) public override onlyGranted {
         IOperation(_opt).fail();
         IOperationStore(optStore).fail(_opt);
     }
 
-    function recover(address _opt, bool _runFinish) public override {
-        require(
-            msg.sender == owner() || msg.sender == bot,
-            "Router: access denied"
-        );
-
+    function recover(address _opt, bool _runFinish)
+        public
+        override
+        onlyGranted
+    {
         IOperation(_opt).recover();
         IOperationStore(optStore).recover(_opt);
 
