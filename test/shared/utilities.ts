@@ -4,7 +4,7 @@ import { ParamType } from "ethers/lib/utils";
 
 export async function filterStructFields(
   filterer: string[],
-  p: Promise<Array<any>[]>
+  p: Promise<Array<any>[]> | Array<any>[] | ReadonlyArray<any>
 ): Promise<any> {
   return Object.entries(await p).reduce((acc, [k, v]) => {
     if (filterer.includes(k)) {
