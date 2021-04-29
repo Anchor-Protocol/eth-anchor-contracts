@@ -1,6 +1,7 @@
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
 import "hardhat-gas-reporter";
+import "solidity-coverage";
 
 import { Networks, EtherscanAPIKey } from "./local.config";
 
