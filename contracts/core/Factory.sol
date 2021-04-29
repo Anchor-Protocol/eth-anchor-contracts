@@ -27,23 +27,8 @@ interface IFactory {
 contract Factory is IFactory, Operator {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    // permission
-    mapping(address => bool) public permission;
-
-    function allow(address _target) public onlyOwner {
-        permission[_target] = true;
-    }
-
-    function deny(address _target) public onlyOwner {
-        permission[_target] = false;
-    }
-
-    function isPermissioned(address _target) public view returns (bool) {
-        return permission[_target];
-    }
-
     // standard operations
-    mapping(uint256 => address) internal standards;
+    mapping(uint256 => address) public standards;
 
     function setStandardOperation(uint256 _optId, address _operation)
         public
@@ -77,8 +62,6 @@ contract Factory is IFactory, Operator {
         onlyGranted
         returns (address)
     {
-        require(isPermissioned(msg.sender), "Factory: not allowed");
-
         bytes32 terraAddr = fetchTerraAddress();
         address instance = Clones.clone(standards[_optId]);
         bytes memory payload =
