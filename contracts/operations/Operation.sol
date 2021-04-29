@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.6.0 <0.8.0;
-pragma abicoder v2;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -57,7 +57,11 @@ interface IOperation {
 
     function finishRedeemStable() external;
 
-    function emergencyWithdraw(address _tokenAddress) external;
+    function halt() external;
+
+    function recover() external;
+
+    function emergencyWithdraw(address _token, address _to) external;
 }
 
 // Operation.sol: subcontract generated per wallet, defining all relevant wrapping functions
@@ -98,12 +102,12 @@ contract Operation is Ownable, IOperation, Initializable {
         aUST = WrappedAsset(_aUST);
     }
 
-    function initPayload(address, bytes32 _terraAddress)
+    function initPayload(address _controller, bytes32 _terraAddress)
         public
         view
         returns (bytes memory)
     {
-        return abi.encode(controller, _terraAddress, wUST, aUST);
+        return abi.encode(_controller, _terraAddress, wUST, aUST);
     }
 
     modifier onlyController {
@@ -127,8 +131,9 @@ contract Operation is Ownable, IOperation, Initializable {
         address _operator,
         uint256 _amount,
         bool _autoFinish
-    ) private {
-        require(currentStatus.status == Status.IDLE, "Operation: busy");
+    ) private checkStopped {
+        require(currentStatus.status == Status.IDLE, "Operation: running");
+        require(_amount >= 10 ether, "Operation: amount must be more than 10");
 
         currentStatus = Info({
             status: Status.RUNNING,
@@ -180,7 +185,7 @@ contract Operation is Ownable, IOperation, Initializable {
         _init(Type.REDEEM, _operator, _amount, _autoFinish);
     }
 
-    function _finish() private returns (address, uint256) {
+    function _finish() private checkStopped returns (address, uint256) {
         // check status
         require(currentStatus.status == Status.RUNNING, "Operation: idle");
 
@@ -218,9 +223,37 @@ contract Operation is Ownable, IOperation, Initializable {
         _finish();
     }
 
-    function emergencyWithdraw(address _token) public override onlyController {
+    function halt() public override onlyController {
+        currentStatus.status = Status.STOPPED;
+    }
+
+    function recover() public override onlyController {
+        if (currentStatus.operator == address(0x0)) {
+            currentStatus.status = Status.IDLE;
+        } else {
+            currentStatus.status = Status.RUNNING;
+        }
+    }
+
+    function emergencyWithdraw(address _token, address _to)
+        public
+        override
+        onlyController
+    {
+        require(
+            currentStatus.status == Status.STOPPED,
+            "Operation: not an emergency"
+        );
+
+        if (currentStatus.operator != address(0x0)) {
+            require(
+                currentStatus.output != _token,
+                "Operation: withdrawal rejected"
+            );
+        }
+
         IERC20(_token).safeTransfer(
-            msg.sender,
+            _to,
             IERC20(_token).balanceOf(address(this))
         );
     }

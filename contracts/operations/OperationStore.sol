@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.6.0 <0.8.0;
-pragma abicoder v2;
+pragma experimental ABIEncoderV2;
+
+import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import {StdQueue} from "../utils/Queue.sol";
 import {Operator} from "../utils/Operator.sol";
@@ -10,154 +12,116 @@ interface IOperationStore {
     // Events
     event OperationAllocated(
         address indexed controller,
-        address indexed operation,
-        bytes32 indexed terraAddr
+        address indexed operation
     );
     event OperationInitialized(
         address indexed controller,
         address indexed operation,
-        bytes32 indexed terraAddr,
         bool autoFinish
     );
     event OperationFinished(
         address indexed controller,
-        address indexed operation,
-        bytes32 indexed terraAddr
+        address indexed operation
+    );
+    event OperationStopped(
+        address indexed controller,
+        address indexed operation
+    );
+    event OperationRecovered(
+        address indexed controller,
+        address indexed operation
+    );
+    event OperationDeallocated(
+        address indexed controller,
+        address indexed operation
     );
     event OperationFlushed(
         address indexed controller,
         address indexed operation,
-        bytes32 indexed terraAddr
-    );
-    event OperationFailed(
-        address indexed controller,
-        address indexed operation,
-        bytes32 indexed terraAddr
-    );
-    event OperationRecovered(
-        address indexed controller,
-        address indexed operation,
-        bytes32 indexed terraAddr
-    );
-    event OperationDeallocated(
-        address indexed controller,
-        address indexed operation,
-        bytes32 indexed terraAddr
+        Queue from,
+        Queue to
     );
 
     // Data Structure
-    enum Status {IDLE, RUNNING_AUTO, RUNNING_MANUAL, FINISHED, FAILED}
-
-    struct Info {
-        address etherAddr;
-        bytes32 terraAddr;
+    enum Status {
+        IDLE,
+        RUNNING_AUTO,
+        RUNNING_MANUAL,
+        FINISHED,
+        STOPPED,
+        RECOVERED,
+        DEALLOCATED
     }
 
+    enum Queue {IDLE, RUNNING, STOPPED, NULL}
+
     // getter
-    function isIdleQueueEmpty() external view returns (bool);
+    function getAvailableOperation() external view returns (address);
 
-    function getIdleOperationAt(uint256 _index)
+    function getStoppedOperationAt(uint256 _index)
         external
         view
-        returns (Info memory);
-
-    function isFailedQueueEmpty() external view returns (bool);
-
-    function getFailedOperationAt(uint256 _index)
-        external
-        view
-        returns (Info memory);
-
-    function isRunningQueueEmpty() external view returns (bool);
+        returns (address);
 
     function getRunningOperationAt(uint256 _index)
         external
         view
-        returns (Info memory);
+        returns (address);
 
     function getStatusOf(address _opt) external view returns (Status);
 
     // logics
-    function allocate(Info memory info) external;
+    function allocate(address _opt) external;
 
     function init(bool _autoFinish) external returns (address);
 
     function finish(address _opt) external;
 
-    function flush(uint256 _amount) external;
+    function halt(address _opt) external;
 
-    function fail() external;
+    function recover(address _opt) external;
 
-    function recover() external;
+    function deallocate(address _opt) external;
 
-    function deallocate() external;
+    function flush(Queue queue, uint256 _amount) external;
+
+    function flushAll(uint256 _amount) external;
 }
 
 contract OperationStore is IOperationStore, Operator {
-    using StdQueue for StdQueue.Queue;
-
-    function encodeOperation(Info memory info)
-        internal
-        pure
-        returns (bytes memory)
-    {
-        return abi.encodePacked(info.etherAddr, info.terraAddr);
-    }
-
-    function decodeOperation(bytes memory rawInfo)
-        internal
-        pure
-        returns (Info memory)
-    {
-        (address etherAddr, bytes32 terraAddr) =
-            abi.decode(rawInfo, (address, bytes32));
-        return Info({etherAddr: etherAddr, terraAddr: terraAddr});
-    }
+    using StdQueue for StdQueue.AddressQueue;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     // queues
     mapping(address => Status) public optStat;
 
-    StdQueue.Queue public optIdle;
-    StdQueue.Queue public optFailed;
-    StdQueue.Queue public optRunning;
+    EnumerableSet.AddressSet internal optIdle;
+    StdQueue.AddressQueue internal optStopped;
+    StdQueue.AddressQueue internal optRunning;
 
-    function isIdleQueueEmpty() public view override returns (bool) {
-        return optIdle.isEmpty();
+    function getAvailableOperation() public view override returns (address) {
+        if (optIdle.length() == 0) {
+            return address(0x0);
+        }
+        return optIdle.at(0);
     }
 
-    function getIdleOperationAt(uint256 _index)
+    function getStoppedOperationAt(uint256 _index)
         public
         view
         override
-        returns (Info memory)
+        returns (address)
     {
-        return decodeOperation(optIdle.getItemAt(_index));
-    }
-
-    function isFailedQueueEmpty() public view override returns (bool) {
-        return optFailed.isEmpty();
-    }
-
-    function getFailedOperationAt(uint256 _index)
-        public
-        view
-        override
-        returns (Info memory)
-    {
-        return decodeOperation(optFailed.getItemAt(_index));
-    }
-
-    function isRunningQueueEmpty() public view override returns (bool) {
-        return optRunning.isEmpty();
+        return optStopped.getItemAt(_index);
     }
 
     function getRunningOperationAt(uint256 _index)
         public
         view
         override
-        returns (Info memory)
+        returns (address)
     {
-        return decodeOperation(optRunning.getItemAt(_index));
+        return optRunning.getItemAt(_index);
     }
 
     function getStatusOf(address _opt) public view override returns (Status) {
@@ -167,11 +131,13 @@ contract OperationStore is IOperationStore, Operator {
     // lifecycle
 
     // x -> init
-    function allocate(Info memory info) public override onlyGranted {
-        optIdle.produce(encodeOperation(info));
-        optStat[info.etherAddr] = Status.IDLE;
-        emit OperationAllocated(msg.sender, info.etherAddr, info.terraAddr);
+    function allocate(address _opt) public override onlyGranted {
+        optIdle.add(_opt);
+        optStat[_opt] = Status.IDLE;
+        emit OperationAllocated(msg.sender, _opt);
     }
+
+    // =========================== RUNNING QUEUE OPERATIONS =========================== //
 
     // init -> finish -> idle
     //      -> fail -> ~
@@ -182,34 +148,28 @@ contract OperationStore is IOperationStore, Operator {
         onlyGranted
         returns (address)
     {
-        bytes memory rawInfo = optIdle.consume();
-        Info memory info = decodeOperation(rawInfo);
+        // consume
+        address opt = optIdle.at(0);
+        optIdle.remove(opt);
+
         if (_autoFinish) {
-            optRunning.produce(rawInfo); // idle -> running
-            optStat[info.etherAddr] = Status.RUNNING_AUTO;
+            optRunning.produce(opt); // idle -> running
+            optStat[opt] = Status.RUNNING_AUTO;
         } else {
-            optStat[info.etherAddr] = Status.RUNNING_MANUAL;
+            optStat[opt] = Status.RUNNING_MANUAL;
         }
-        emit OperationInitialized(
-            msg.sender,
-            info.etherAddr,
-            info.terraAddr,
-            _autoFinish
-        );
-        return info.etherAddr;
+
+        emit OperationInitialized(msg.sender, opt, _autoFinish);
+        return opt;
     }
+
+    // =========================== RUNNING QUEUE OPERATIONS =========================== //
 
     function finish(address _opt) public override onlyGranted {
         Status status = optStat[_opt];
 
         if (status == Status.RUNNING_MANUAL) {
-            allocate(
-                Info({
-                    etherAddr: _opt,
-                    terraAddr: IOperation(_opt).terraAddress()
-                })
-            );
-            optStat[_opt] = Status.IDLE;
+            allocate(_opt);
         } else if (status == Status.RUNNING_AUTO) {
             // wait for flush
             optStat[_opt] = Status.FINISHED;
@@ -217,53 +177,108 @@ contract OperationStore is IOperationStore, Operator {
             revert("Router: invalid condition for finish operation");
         }
 
-        emit OperationFinished(
-            msg.sender,
-            _opt,
-            IOperation(_opt).terraAddress()
-        );
+        emit OperationFinished(msg.sender, _opt);
     }
 
-    function flush(uint256 _amount) public override onlyGranted {
+    // fail -> recover -> idle
+    //      -> truncate -> x
+    function halt(address _opt) public override onlyGranted {
+        Status stat = optStat[_opt];
+        if (stat == Status.IDLE) {
+            // push to failed queue
+            optIdle.remove(_opt);
+            optStopped.produce(_opt);
+        } else {
+            // wait for flush
+            optStat[_opt] = Status.STOPPED;
+        }
+        emit OperationStopped(msg.sender, _opt);
+    }
+
+    function flushRunningQueue(StdQueue.AddressQueue storage _queue)
+        internal
+        returns (bool)
+    {
+        address opt = _queue.getItemAt(0);
+        Status stat = optStat[opt];
+        if (stat == Status.FINISHED) {
+            optIdle.add(_queue.consume());
+            optStat[opt] = Status.IDLE;
+            emit OperationFlushed(msg.sender, opt, Queue.RUNNING, Queue.IDLE);
+        } else if (stat == Status.STOPPED) {
+            optStopped.produce(_queue.consume());
+            emit OperationFlushed(
+                msg.sender,
+                opt,
+                Queue.RUNNING,
+                Queue.STOPPED
+            );
+        } else {
+            return false;
+        }
+        return true;
+    }
+
+    // =========================== FAIL QUEUE OPERATIONS =========================== //
+
+    function recover(address _opt) public override onlyGranted {
+        optStat[_opt] = Status.RECOVERED;
+        emit OperationRecovered(msg.sender, _opt);
+    }
+
+    function deallocate(address _opt) public override onlyOwner {
+        optStat[_opt] = Status.DEALLOCATED;
+        emit OperationDeallocated(msg.sender, _opt);
+    }
+
+    function flushStoppedQueue(StdQueue.AddressQueue storage _queue)
+        internal
+        returns (bool)
+    {
+        address opt = _queue.getItemAt(0);
+        Status stat = optStat[opt];
+        if (stat == Status.RECOVERED) {
+            optIdle.add(_queue.consume());
+            optStat[opt] = Status.IDLE;
+            emit OperationFlushed(msg.sender, opt, Queue.STOPPED, Queue.IDLE);
+        } else if (stat == Status.DEALLOCATED) {
+            _queue.consume();
+            emit OperationFlushed(msg.sender, opt, Queue.STOPPED, Queue.NULL);
+        } else {
+            return false;
+        }
+
+        return true;
+    }
+
+    function _flush(
+        StdQueue.AddressQueue storage _queue,
+        uint256 _amount,
+        function(StdQueue.AddressQueue storage) returns (bool) _handler
+    ) internal {
         for (uint256 i = 0; i < _amount; i++) {
-            if (isRunningQueueEmpty()) {
+            if (_queue.isEmpty()) {
                 return;
             }
 
-            Info memory info = getRunningOperationAt(0);
-            if (optStat[info.etherAddr] == Status.FINISHED) {
-                optIdle.produce(optRunning.consume());
-                emit OperationFlushed(
-                    msg.sender,
-                    info.etherAddr,
-                    info.terraAddr
-                );
-            } else {
+            if (!_handler(_queue)) {
                 return;
             }
         }
     }
 
-    // fail -> recover -> idle
-    //      -> truncate -> x
-    function fail() public override onlyGranted {
-        bytes memory rawInfo = optRunning.consume();
-        optFailed.produce(rawInfo); // running -> failed
-        Info memory info = decodeOperation(rawInfo);
-        optStat[info.etherAddr] = Status.FAILED;
-        emit OperationFailed(msg.sender, info.etherAddr, info.terraAddr);
+    function flush(Queue _queue, uint256 _amount) public override onlyGranted {
+        if (_queue == Queue.RUNNING) {
+            _flush(optRunning, _amount, flushRunningQueue);
+        } else if (_queue == Queue.STOPPED) {
+            _flush(optStopped, _amount, flushStoppedQueue);
+        } else {
+            revert("OperationStore: invalid queue type");
+        }
     }
 
-    function recover() public override onlyGranted {
-        bytes memory rawInfo = optFailed.consume();
-        optIdle.produce(rawInfo); // failed -> idle
-        Info memory info = decodeOperation(rawInfo);
-        optStat[info.etherAddr] = Status.IDLE;
-        emit OperationRecovered(msg.sender, info.etherAddr, info.terraAddr);
-    }
-
-    function deallocate() public override onlyOwner {
-        Info memory info = decodeOperation(optFailed.consume()); // failed -> x
-        emit OperationDeallocated(msg.sender, info.etherAddr, info.terraAddr);
+    function flushAll(uint256 _amount) public override onlyGranted {
+        flush(Queue.RUNNING, _amount);
+        flush(Queue.STOPPED, _amount);
     }
 }

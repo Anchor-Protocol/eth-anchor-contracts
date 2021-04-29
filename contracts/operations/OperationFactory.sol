@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.6.0 <0.8.0;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
+
+import {Operator} from "../utils/Operator.sol";
 
 interface OperationStandard {
     function initialize(bytes memory) external;
@@ -11,7 +12,7 @@ interface OperationStandard {
     function initPayload(address, bytes32) external view returns (bytes memory);
 }
 
-interface IFactory {
+interface IOperationFactory {
     event ContractDeployed(
         address indexed deployer,
         address indexed instance,
@@ -23,26 +24,11 @@ interface IFactory {
         returns (address);
 }
 
-contract Factory is IFactory, Ownable {
+contract OperationFactory is IOperationFactory, Operator {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    // permission
-    mapping(address => bool) public permission;
-
-    function allow(address _target) public onlyOwner {
-        permission[_target] = true;
-    }
-
-    function deny(address _target) public onlyOwner {
-        permission[_target] = false;
-    }
-
-    function isPermissioned(address _target) public view returns (bool) {
-        return permission[_target];
-    }
-
     // standard operations
-    mapping(uint256 => address) internal standards;
+    mapping(uint256 => address) public standards;
 
     function setStandardOperation(uint256 _optId, address _operation)
         public
@@ -73,10 +59,9 @@ contract Factory is IFactory, Ownable {
     function build(uint256 _optId, address _controller)
         public
         override
+        onlyGranted
         returns (address)
     {
-        require(isPermissioned(msg.sender), "Factory: not allowed");
-
         bytes32 terraAddr = fetchTerraAddress();
         address instance = Clones.clone(standards[_optId]);
         bytes memory payload =

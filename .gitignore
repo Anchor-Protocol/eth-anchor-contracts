@@ -4,6 +4,8 @@ node_modules
 #Hardhat files
 cache
 artifacts
+coverage
+coverage.json
 build
 local.config.ts
 local.config.js

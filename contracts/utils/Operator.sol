@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.6.0 <0.8.0;
-pragma abicoder v2;
+pragma experimental ABIEncoderV2;
 
 contract Operator {
     address public owner;
@@ -12,24 +12,33 @@ contract Operator {
     }
 
     modifier onlyOwner {
-        require(msg.sender == owner, "Operator: owner access denied");
+        require(checkOwner(), "Operator: owner access denied");
 
         _;
+    }
+
+    function checkOwner() public view returns (bool) {
+        return msg.sender == owner;
     }
 
     modifier onlyOperator {
-        require(msg.sender == operator, "Operator: operator access denied");
+        require(checkOperator(), "Operator: operator access denied");
 
         _;
     }
 
+    function checkOperator() public view returns (bool) {
+        return msg.sender == operator;
+    }
+
     modifier onlyGranted {
-        require(
-            msg.sender == owner || msg.sender == operator,
-            "Operator: access denied"
-        );
+        require(checkGranted(), "Operator: access denied");
 
         _;
+    }
+
+    function checkGranted() public view returns (bool) {
+        return checkOwner() || checkOperator();
     }
 
     function transferOwnership(address _owner) public onlyOwner {
