@@ -12,7 +12,7 @@ interface OperationStandard {
     function initPayload(address, bytes32) external view returns (bytes memory);
 }
 
-interface IFactory {
+interface IOperationFactory {
     event ContractDeployed(
         address indexed deployer,
         address indexed instance,
@@ -24,7 +24,7 @@ interface IFactory {
         returns (address);
 }
 
-contract Factory is IFactory, Operator {
+contract OperationFactory is IOperationFactory, Operator {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     // standard operations

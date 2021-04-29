@@ -20,7 +20,7 @@ import {
 
 chai.use(solidity);
 
-describe("Factory", () => {
+describe("OperationFactory", () => {
   const { provider } = ethers;
 
   let owner: SignerWithAddress;
@@ -49,7 +49,7 @@ describe("Factory", () => {
         )
       );
 
-    const Factory = await ethers.getContractFactory("Factory");
+    const Factory = await ethers.getContractFactory("OperationFactory");
     const factory = await Factory.connect(owner).deploy();
     await factory.connect(owner).transferOperator(controller.address);
 
