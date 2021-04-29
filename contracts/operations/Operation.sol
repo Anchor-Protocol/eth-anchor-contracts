@@ -102,12 +102,12 @@ contract Operation is Ownable, IOperation, Initializable {
         aUST = WrappedAsset(_aUST);
     }
 
-    function initPayload(address, bytes32 _terraAddress)
+    function initPayload(address _controller, bytes32 _terraAddress)
         public
         view
         returns (bytes memory)
     {
-        return abi.encode(controller, _terraAddress, wUST, aUST);
+        return abi.encode(_controller, _terraAddress, wUST, aUST);
     }
 
     modifier onlyController {
