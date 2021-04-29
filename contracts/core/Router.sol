@@ -8,10 +8,10 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
-import {IFactory} from "./Factory.sol";
 import {StdQueue} from "../utils/Queue.sol";
 import {IOperation} from "../operations/Operation.sol";
 import {IOperationStore} from "../operations/OperationStore.sol";
+import {IOperationFactory} from "../operations/OperationFactory.sol";
 
 interface IRouter {
     function depositStable(uint256 _amount) external;
@@ -80,7 +80,8 @@ contract Router is IRouter, Ownable, Initializable {
         IOperationStore store = IOperationStore(optStore);
         if (store.getAvailableOperation() == address(0x0)) {
             // deploy new one
-            address instance = IFactory(factory).build(optStdId, address(this));
+            address instance =
+                IOperationFactory(factory).build(optStdId, address(this));
             store.allocate(instance);
             IERC20(wUST).safeApprove(instance, type(uint256).max);
             IERC20(aUST).safeApprove(instance, type(uint256).max);
