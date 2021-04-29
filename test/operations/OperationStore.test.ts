@@ -155,12 +155,7 @@ describe("OperationStore", () => {
 
             await expect(store.connect(operator).flush(Queue.FAILED, 10))
               .to.emit(store, "OperationFlushed")
-              .withArgs(
-                operator.address,
-                TEST_ADDR,
-                Queue.FAILED,
-                Queue.BLACKHOLE
-              );
+              .withArgs(operator.address, TEST_ADDR, Queue.FAILED, Queue.NULL);
 
             expect(await store.getStatusOf(TEST_ADDR)).to.eq(
               Status.DEALLOCATED

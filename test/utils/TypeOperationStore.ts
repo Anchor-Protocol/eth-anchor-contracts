@@ -12,5 +12,5 @@ export enum Queue {
   IDLE = 0,
   RUNNING = 1,
   FAILED = 2,
-  BLACKHOLE = 3,
+  NULL = 3,
 }

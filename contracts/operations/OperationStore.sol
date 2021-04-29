@@ -53,7 +53,7 @@ interface IOperationStore {
         DEALLOCATED
     }
 
-    enum Queue {IDLE, RUNNING, FAILED, BLACKHOLE}
+    enum Queue {IDLE, RUNNING, FAILED, NULL}
 
     // getter
     function getAvailableOperation() external view returns (address);
@@ -238,12 +238,7 @@ contract OperationStore is IOperationStore, Operator {
             emit OperationFlushed(msg.sender, opt, Queue.FAILED, Queue.IDLE);
         } else if (stat == Status.DEALLOCATED) {
             _queue.consume();
-            emit OperationFlushed(
-                msg.sender,
-                opt,
-                Queue.FAILED,
-                Queue.BLACKHOLE
-            );
+            emit OperationFlushed(msg.sender, opt, Queue.FAILED, Queue.NULL);
         } else {
             return false;
         }
