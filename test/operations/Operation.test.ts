@@ -76,7 +76,7 @@ describe("Operation", () => {
   });
 
   it("initialize", async () => {
-    expect(await operation.initPayload(owner.address, hash2)).to.eq(
+    expect(await operation.initPayload(controller.address, hash2)).to.eq(
       encodeParameters(
         ["address", "bytes32", "address", "address"],
         [controller.address, hash2, wUST.address, aUST.address]
