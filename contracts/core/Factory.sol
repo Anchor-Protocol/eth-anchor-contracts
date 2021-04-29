@@ -4,7 +4,7 @@ pragma solidity >=0.6.0 <0.8.0;
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
-import {Operator} from "./utils/Operator.sol";
+import {Operator} from "../utils/Operator.sol";
 
 interface OperationStandard {
     function initialize(bytes memory) external;

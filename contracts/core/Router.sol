@@ -9,9 +9,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
 import {IFactory} from "./Factory.sol";
-import {StdQueue} from "./utils/Queue.sol";
-import {IOperation} from "./operations/Operation.sol";
-import {IOperationStore} from "./operations/OperationStore.sol";
+import {StdQueue} from "../utils/Queue.sol";
+import {IOperation} from "../operations/Operation.sol";
+import {IOperationStore} from "../operations/OperationStore.sol";
 
 interface IRouter {
     function depositStable(uint256 _amount) external;
