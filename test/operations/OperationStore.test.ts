@@ -101,32 +101,37 @@ describe("OperationStore", () => {
 
       describe("=> fail", () => {
         it("#idle", async () => {
-          await expect(store.connect(operator).fail(TEST_ADDR))
-            .to.emit(store, "OperationFailed")
+          await expect(store.connect(operator).halt(TEST_ADDR))
+            .to.emit(store, "OperationStopped")
             .withArgs(operator.address, TEST_ADDR);
           expect(await store.getAvailableOperation()).to.eq(ZERO_ADDR);
-          expect(await store.getFailedOperationAt(0)).to.eq(TEST_ADDR);
+          expect(await store.getStoppedOperationAt(0)).to.eq(TEST_ADDR);
         });
 
         it("#running", async () => {
           await store.connect(operator).init(true);
-          await expect(store.connect(operator).fail(TEST_ADDR))
-            .to.emit(store, "OperationFailed")
+          await expect(store.connect(operator).halt(TEST_ADDR))
+            .to.emit(store, "OperationStopped")
             .withArgs(operator.address, TEST_ADDR);
-          expect(await store.getStatusOf(TEST_ADDR)).to.eq(Status.FAILED);
+          expect(await store.getStatusOf(TEST_ADDR)).to.eq(Status.STOPPED);
 
           await expect(store.connect(operator).flush(Queue.RUNNING, 10))
             .to.emit(store, "OperationFlushed")
-            .withArgs(operator.address, TEST_ADDR, Queue.RUNNING, Queue.FAILED);
+            .withArgs(
+              operator.address,
+              TEST_ADDR,
+              Queue.RUNNING,
+              Queue.STOPPED
+            );
 
           expect(await store.getRunningOperationAt(0)).to.eq(ZERO_ADDR);
-          expect(await store.getFailedOperationAt(0)).to.eq(TEST_ADDR);
+          expect(await store.getStoppedOperationAt(0)).to.eq(TEST_ADDR);
         });
 
         describe("#queue", () => {
           beforeEach("setup", async () => {
             await store.connect(operator).init(true);
-            await store.connect(operator).fail(TEST_ADDR);
+            await store.connect(operator).halt(TEST_ADDR);
             await store.connect(operator).flush(Queue.RUNNING, 10);
           });
 
@@ -136,12 +141,12 @@ describe("OperationStore", () => {
               .withArgs(operator.address, TEST_ADDR);
             expect(await store.getStatusOf(TEST_ADDR)).to.eq(Status.RECOVERED);
 
-            await expect(store.connect(operator).flush(Queue.FAILED, 10))
+            await expect(store.connect(operator).flush(Queue.STOPPED, 10))
               .to.emit(store, "OperationFlushed")
-              .withArgs(operator.address, TEST_ADDR, Queue.FAILED, Queue.IDLE);
+              .withArgs(operator.address, TEST_ADDR, Queue.STOPPED, Queue.IDLE);
 
             expect(await store.getStatusOf(TEST_ADDR)).to.eq(Status.IDLE);
-            expect(await store.getFailedOperationAt(0)).to.eq(ZERO_ADDR);
+            expect(await store.getStoppedOperationAt(0)).to.eq(ZERO_ADDR);
             expect(await store.getAvailableOperation()).to.eq(TEST_ADDR);
           });
 
@@ -153,14 +158,14 @@ describe("OperationStore", () => {
               Status.DEALLOCATED
             );
 
-            await expect(store.connect(operator).flush(Queue.FAILED, 10))
+            await expect(store.connect(operator).flush(Queue.STOPPED, 10))
               .to.emit(store, "OperationFlushed")
-              .withArgs(operator.address, TEST_ADDR, Queue.FAILED, Queue.NULL);
+              .withArgs(operator.address, TEST_ADDR, Queue.STOPPED, Queue.NULL);
 
             expect(await store.getStatusOf(TEST_ADDR)).to.eq(
               Status.DEALLOCATED
             );
-            expect(await store.getFailedOperationAt(0)).to.eq(ZERO_ADDR);
+            expect(await store.getStoppedOperationAt(0)).to.eq(ZERO_ADDR);
             expect(await store.getAvailableOperation()).to.eq(ZERO_ADDR);
           });
         });

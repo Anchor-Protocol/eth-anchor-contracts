@@ -195,7 +195,7 @@ describe("Operation", () => {
           .emergencyWithdraw(wUST.address, controller.address)
       ).to.revertedWith("Operation: not an emergency");
 
-      await operation.connect(controller).fail();
+      await operation.connect(controller).halt();
 
       currentStatus = await filterStructFields(
         operationInfoFields,
@@ -222,7 +222,7 @@ describe("Operation", () => {
         .connect(controller)
         .initDepositStable(controller.address, amount, true);
       await wUST.connect(owner).transfer(operation.address, amount);
-      await operation.connect(controller).fail();
+      await operation.connect(controller).halt();
 
       currentStatus = await filterStructFields(
         operationInfoFields,

@@ -23,7 +23,7 @@ interface IOperationStore {
         address indexed controller,
         address indexed operation
     );
-    event OperationFailed(
+    event OperationStopped(
         address indexed controller,
         address indexed operation
     );
@@ -48,17 +48,17 @@ interface IOperationStore {
         RUNNING_AUTO,
         RUNNING_MANUAL,
         FINISHED,
-        FAILED,
+        STOPPED,
         RECOVERED,
         DEALLOCATED
     }
 
-    enum Queue {IDLE, RUNNING, FAILED, NULL}
+    enum Queue {IDLE, RUNNING, STOPPED, NULL}
 
     // getter
     function getAvailableOperation() external view returns (address);
 
-    function getFailedOperationAt(uint256 _index)
+    function getStoppedOperationAt(uint256 _index)
         external
         view
         returns (address);
@@ -77,7 +77,7 @@ interface IOperationStore {
 
     function finish(address _opt) external;
 
-    function fail(address _opt) external;
+    function halt(address _opt) external;
 
     function recover(address _opt) external;
 
@@ -96,7 +96,7 @@ contract OperationStore is IOperationStore, Operator {
     mapping(address => Status) public optStat;
 
     EnumerableSet.AddressSet internal optIdle;
-    StdQueue.AddressQueue internal optFailed;
+    StdQueue.AddressQueue internal optStopped;
     StdQueue.AddressQueue internal optRunning;
 
     function getAvailableOperation() public view override returns (address) {
@@ -106,13 +106,13 @@ contract OperationStore is IOperationStore, Operator {
         return optIdle.at(0);
     }
 
-    function getFailedOperationAt(uint256 _index)
+    function getStoppedOperationAt(uint256 _index)
         public
         view
         override
         returns (address)
     {
-        return optFailed.getItemAt(_index);
+        return optStopped.getItemAt(_index);
     }
 
     function getRunningOperationAt(uint256 _index)
@@ -182,17 +182,17 @@ contract OperationStore is IOperationStore, Operator {
 
     // fail -> recover -> idle
     //      -> truncate -> x
-    function fail(address _opt) public override onlyGranted {
+    function halt(address _opt) public override onlyGranted {
         Status stat = optStat[_opt];
         if (stat == Status.IDLE) {
             // push to failed queue
             optIdle.remove(_opt);
-            optFailed.produce(_opt);
+            optStopped.produce(_opt);
         } else {
             // wait for flush
-            optStat[_opt] = Status.FAILED;
+            optStat[_opt] = Status.STOPPED;
         }
-        emit OperationFailed(msg.sender, _opt);
+        emit OperationStopped(msg.sender, _opt);
     }
 
     function flushRunningQueue(StdQueue.AddressQueue storage _queue)
@@ -205,9 +205,14 @@ contract OperationStore is IOperationStore, Operator {
             optIdle.add(_queue.consume());
             optStat[opt] = Status.IDLE;
             emit OperationFlushed(msg.sender, opt, Queue.RUNNING, Queue.IDLE);
-        } else if (stat == Status.FAILED) {
-            optFailed.produce(_queue.consume());
-            emit OperationFlushed(msg.sender, opt, Queue.RUNNING, Queue.FAILED);
+        } else if (stat == Status.STOPPED) {
+            optStopped.produce(_queue.consume());
+            emit OperationFlushed(
+                msg.sender,
+                opt,
+                Queue.RUNNING,
+                Queue.STOPPED
+            );
         } else {
             return false;
         }
@@ -226,7 +231,7 @@ contract OperationStore is IOperationStore, Operator {
         emit OperationDeallocated(msg.sender, _opt);
     }
 
-    function flushFailedQueue(StdQueue.AddressQueue storage _queue)
+    function flushStoppedQueue(StdQueue.AddressQueue storage _queue)
         internal
         returns (bool)
     {
@@ -235,10 +240,10 @@ contract OperationStore is IOperationStore, Operator {
         if (stat == Status.RECOVERED) {
             optIdle.add(_queue.consume());
             optStat[opt] = Status.IDLE;
-            emit OperationFlushed(msg.sender, opt, Queue.FAILED, Queue.IDLE);
+            emit OperationFlushed(msg.sender, opt, Queue.STOPPED, Queue.IDLE);
         } else if (stat == Status.DEALLOCATED) {
             _queue.consume();
-            emit OperationFlushed(msg.sender, opt, Queue.FAILED, Queue.NULL);
+            emit OperationFlushed(msg.sender, opt, Queue.STOPPED, Queue.NULL);
         } else {
             return false;
         }
@@ -265,8 +270,8 @@ contract OperationStore is IOperationStore, Operator {
     function flush(Queue _queue, uint256 _amount) public override onlyGranted {
         if (_queue == Queue.RUNNING) {
             _flush(optRunning, _amount, flushRunningQueue);
-        } else if (_queue == Queue.FAILED) {
-            _flush(optFailed, _amount, flushFailedQueue);
+        } else if (_queue == Queue.STOPPED) {
+            _flush(optStopped, _amount, flushStoppedQueue);
         } else {
             revert("OperationStore: invalid queue type");
         }
@@ -274,6 +279,6 @@ contract OperationStore is IOperationStore, Operator {
 
     function flushAll(uint256 _amount) public override onlyGranted {
         flush(Queue.RUNNING, _amount);
-        flush(Queue.FAILED, _amount);
+        flush(Queue.STOPPED, _amount);
     }
 }

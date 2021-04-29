@@ -57,7 +57,7 @@ interface IOperation {
 
     function finishRedeemStable() external;
 
-    function fail() external;
+    function halt() external;
 
     function recover() external;
 
@@ -223,7 +223,7 @@ contract Operation is Ownable, IOperation, Initializable {
         _finish();
     }
 
-    function fail() public override onlyController {
+    function halt() public override onlyController {
         currentStatus.status = Status.STOPPED;
     }
 

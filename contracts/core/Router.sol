@@ -36,7 +36,7 @@ interface IRouter {
 
     function flush(uint256 _amount) external;
 
-    function fail(address _opt) external;
+    function halt(address _opt) external;
 
     function recover(address _opt, bool _runFinish) external;
 
@@ -176,9 +176,9 @@ contract Router is IRouter, Operator, Initializable {
         IOperationStore(optStore).flushAll(_amount);
     }
 
-    function fail(address _opt) public override onlyGranted {
-        IOperation(_opt).fail();
-        IOperationStore(optStore).fail(_opt);
+    function halt(address _opt) public override onlyGranted {
+        IOperation(_opt).halt();
+        IOperationStore(optStore).halt(_opt);
     }
 
     function recover(address _opt, bool _runFinish)
