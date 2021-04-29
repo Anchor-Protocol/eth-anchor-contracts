@@ -34,12 +34,15 @@ describe("Queue", () => {
   it("works well", async () => {
     expect(await tester.isEmpty()).to.be.true;
 
-    const hash1 = "0xdeadbeefdeadbeef";
+    const hash1 =
+      "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+
     await tester.produce(hash1);
     expect(await tester.getItemAt(0)).to.eq(hash1);
     expect(await tester.isEmpty()).to.be.false;
 
-    const hash2 = "0xbeefdeadbeefdead";
+    const hash2 =
+      "0xbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdead";
     await tester.produce(hash2);
     expect(await tester.getItemAt(1)).to.eq(hash2);
     expect(await tester.isEmpty()).to.be.false;
@@ -47,7 +50,9 @@ describe("Queue", () => {
     await expect(tester.consume()).to.emit(tester, "Consumed").withArgs(hash1);
     await expect(tester.consume()).to.emit(tester, "Consumed").withArgs(hash2);
 
-    expect(await tester.getItemAt(0)).to.eq("0x");
+    expect(await tester.getItemAt(0)).to.eq(
+      "0x0000000000000000000000000000000000000000000000000000000000000000"
+    );
     expect(await tester.isEmpty()).to.be.true;
 
     await expect(tester.consume()).to.revertedWith("StdQueue: empty queue");
