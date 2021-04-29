@@ -30,8 +30,6 @@ describe("OperationFactory", () => {
     [owner, controller] = await ethers.getSigners();
   });
 
-  const emptyHash =
-    "0x0000000000000000000000000000000000000000000000000000000000000000";
   const hash1 =
     "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
   const hash2 =
