@@ -144,7 +144,6 @@ describe("OperationStore", () => {
             await store.connect(operator).init(true);
             await store.connect(operator).fail(TEST_ADDR);
             await store.connect(operator).flush(Queue.RUNNING, 10);
-            console.log(await store.getFailedOperationAt(0));
           });
 
           it("=> recover", async () => {
