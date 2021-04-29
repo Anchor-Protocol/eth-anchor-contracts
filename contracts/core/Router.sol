@@ -28,9 +28,13 @@ interface IRouter {
 
     function finishRedeemStable(address _operation) external;
 
+    function finish(address _operation) external;
+
     // ======================= limited access
 
     function allocate(uint256 _amount) external;
+
+    function flush(uint256 _amount) external;
 
     function fail(address _opt) external;
 
@@ -153,6 +157,10 @@ contract Router is IRouter, Operator, Initializable {
         _finish(_operation);
     }
 
+    function finish(address _operation) public override {
+        _finish(_operation);
+    }
+
     function allocate(uint256 _amount) public override onlyGranted {
         for (uint256 i = 0; i < _amount; i++) {
             // deploy new one
@@ -162,6 +170,10 @@ contract Router is IRouter, Operator, Initializable {
             IERC20(wUST).safeApprove(instance, type(uint256).max);
             IERC20(aUST).safeApprove(instance, type(uint256).max);
         }
+    }
+
+    function flush(uint256 _amount) public override onlyGranted {
+        IOperationStore(optStore).flushAll(_amount);
     }
 
     function fail(address _opt) public override onlyGranted {
