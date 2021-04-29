@@ -271,7 +271,7 @@ contract OperationStore is IOperationStore, Operator {
         if (_queue == Queue.RUNNING) {
             _flush(optRunning, _amount, flushRunningQueue);
         } else if (_queue == Queue.FAILED) {
-            _flush(optRunning, _amount, flushFailedQueue);
+            _flush(optFailed, _amount, flushFailedQueue);
         } else {
             revert("OperationStore: invalid queue type");
         }
