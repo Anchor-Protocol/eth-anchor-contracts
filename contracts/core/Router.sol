@@ -14,23 +14,38 @@ import {IOperationStore} from "../operations/OperationStore.sol";
 import {IOperationFactory} from "../operations/OperationFactory.sol";
 
 interface IRouter {
-    // ======================= public access
+    // ======================= common ======================= //
+
+    function init(
+        IOperation.Type _type,
+        address _operator,
+        uint256 _amount,
+        bool _autoFinish
+    ) external;
+
+    function finish(address _operation) external;
+
+    // ======================= deposit stable ======================= //
 
     function depositStable(uint256 _amount) external;
+
+    function depositStable(address _operator, uint256 _amount) external;
 
     function initDepositStable(uint256 _amount) external;
 
     function finishDepositStable(address _operation) external;
 
+    // ======================= redeem stable ======================= //
+
     function redeemStable(uint256 _amount) external;
+
+    function redeemStable(address _operator, uint256 _amount) external;
 
     function initRedeemStable(uint256 _amount) external;
 
     function finishRedeemStable(address _operation) external;
 
-    function finish(address _operation) external;
-
-    // ======================= limited access
+    // ======================= limited access ======================= //
 
     function allocate(uint256 _amount) external;
 
@@ -79,6 +94,7 @@ contract Router is IRouter, Operator, Initializable {
 
     function _init(
         IOperation.Type _typ,
+        address _operator,
         uint256 _amount,
         bool _autoFinish
     ) internal {
@@ -95,13 +111,13 @@ contract Router is IRouter, Operator, Initializable {
 
         if (_typ == IOperation.Type.DEPOSIT) {
             IERC20(wUST).safeTransferFrom(msg.sender, address(this), _amount);
-            operation.initDepositStable(msg.sender, _amount, _autoFinish);
+            operation.initDepositStable(_operator, _amount, _autoFinish);
             return;
         }
 
         if (_typ == IOperation.Type.REDEEM) {
             IERC20(aUST).safeTransferFrom(msg.sender, address(this), _amount);
-            operation.initRedeemStable(msg.sender, _amount, _autoFinish);
+            operation.initRedeemStable(_operator, _amount, _autoFinish);
             return;
         }
 
@@ -133,31 +149,54 @@ contract Router is IRouter, Operator, Initializable {
         IOperationStore(optStore).finish(_opt);
     }
 
+    // =================================== COMMON =================================== //
+
+    function init(
+        IOperation.Type _type,
+        address _operator,
+        uint256 _amount,
+        bool _autoFinish
+    ) public override {
+        _init(_type, _operator, _amount, _autoFinish);
+    }
+
+    function finish(address _operation) public override {
+        _finish(_operation);
+    }
+
+    // =================================== DEPOSIT STABLE =================================== //
+
     function depositStable(uint256 _amount) public override {
-        _init(IOperation.Type.DEPOSIT, _amount, true);
+        _init(IOperation.Type.DEPOSIT, msg.sender, _amount, true);
+    }
+
+    function depositStable(address _operator, uint256 _amount) public override {
+        _init(IOperation.Type.DEPOSIT, _operator, _amount, true);
     }
 
     function initDepositStable(uint256 _amount) public override {
-        _init(IOperation.Type.DEPOSIT, _amount, false);
+        _init(IOperation.Type.DEPOSIT, msg.sender, _amount, false);
     }
 
     function finishDepositStable(address _operation) public override {
         _finish(_operation);
     }
 
+    // =================================== REDEEM STABLE =================================== //
+
     function redeemStable(uint256 _amount) public override {
-        _init(IOperation.Type.REDEEM, _amount, true);
+        _init(IOperation.Type.REDEEM, msg.sender, _amount, true);
+    }
+
+    function redeemStable(address _operator, uint256 _amount) public override {
+        _init(IOperation.Type.REDEEM, _operator, _amount, true);
     }
 
     function initRedeemStable(uint256 _amount) public override {
-        _init(IOperation.Type.REDEEM, _amount, false);
+        _init(IOperation.Type.REDEEM, msg.sender, _amount, false);
     }
 
     function finishRedeemStable(address _operation) public override {
-        _finish(_operation);
-    }
-
-    function finish(address _operation) public override {
         _finish(_operation);
     }
 
