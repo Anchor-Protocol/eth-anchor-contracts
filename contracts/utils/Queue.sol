@@ -8,6 +8,10 @@ library StdQueue {
         mapping(uint256 => bytes32) store;
     }
 
+    function _length(Queue storage q) internal view returns (uint256) {
+        return q.size;
+    }
+
     function _isEmpty(Queue storage q) internal view returns (bool) {
         return q.size == 0;
     }
@@ -39,6 +43,14 @@ library StdQueue {
         Queue _inner;
     }
 
+    function length(Bytes32Queue storage queue)
+        internal
+        view
+        returns (uint256)
+    {
+        return _length(queue._inner);
+    }
+
     function isEmpty(Bytes32Queue storage queue) internal view returns (bool) {
         return _isEmpty(queue._inner);
     }
@@ -63,6 +75,14 @@ library StdQueue {
 
     struct AddressQueue {
         Queue _inner;
+    }
+
+    function length(AddressQueue storage queue)
+        internal
+        view
+        returns (uint256)
+    {
+        return _length(queue._inner);
     }
 
     function isEmpty(AddressQueue storage queue) internal view returns (bool) {

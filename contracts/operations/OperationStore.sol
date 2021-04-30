@@ -58,15 +58,12 @@ interface IOperationStore {
     // getter
     function getAvailableOperation() external view returns (address);
 
-    function getStoppedOperationAt(uint256 _index)
+    function getQueuedOperationAt(Queue _queue, uint256 _index)
         external
         view
         returns (address);
 
-    function getRunningOperationAt(uint256 _index)
-        external
-        view
-        returns (address);
+    function getQueueSizeOf(Queue _queue) external view returns (uint256);
 
     function getStatusOf(address _opt) external view returns (Status);
 
@@ -106,22 +103,34 @@ contract OperationStore is IOperationStore, Operator {
         return optIdle.at(0);
     }
 
-    function getStoppedOperationAt(uint256 _index)
+    function getQueuedOperationAt(Queue _queue, uint256 _index)
         public
         view
         override
         returns (address)
     {
-        return optStopped.getItemAt(_index);
+        if (_queue == Queue.RUNNING) {
+            return optRunning.getItemAt(_index);
+        } else if (_queue == Queue.STOPPED) {
+            return optStopped.getItemAt(_index);
+        } else {
+            revert("OperationStore: invalid queue type");
+        }
     }
 
-    function getRunningOperationAt(uint256 _index)
+    function getQueueSizeOf(Queue _queue)
         public
         view
         override
-        returns (address)
+        returns (uint256)
     {
-        return optRunning.getItemAt(_index);
+        if (_queue == Queue.RUNNING) {
+            return optRunning.length();
+        } else if (_queue == Queue.STOPPED) {
+            return optStopped.length();
+        } else {
+            revert("OperationStore: invalid queue type");
+        }
     }
 
     function getStatusOf(address _opt) public view override returns (Status) {

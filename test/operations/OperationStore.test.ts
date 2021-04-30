@@ -58,7 +58,7 @@ describe("OperationStore", () => {
             .to.emit(store, "OperationInitialized")
             .withArgs(operator.address, TEST_ADDR, true);
           expect(await store.getAvailableOperation()).to.eq(ZERO_ADDR);
-          expect(await store.getRunningOperationAt(Status.IDLE)).to.eq(
+          expect(await store.getQueuedOperationAt(Queue.RUNNING, 0)).to.eq(
             TEST_ADDR
           );
           expect(await store.getStatusOf(TEST_ADDR)).to.eq(Status.RUNNING_AUTO);
@@ -74,7 +74,9 @@ describe("OperationStore", () => {
 
           expect(await store.getStatusOf(TEST_ADDR)).to.eq(Status.IDLE);
           expect(await store.getAvailableOperation()).to.eq(TEST_ADDR);
-          expect(await store.getRunningOperationAt(0)).to.eq(ZERO_ADDR);
+          expect(await store.getQueuedOperationAt(Queue.RUNNING, 0)).to.eq(
+            ZERO_ADDR
+          );
         });
 
         it("#autoFinish = false", async () => {
@@ -82,7 +84,9 @@ describe("OperationStore", () => {
             .to.emit(store, "OperationInitialized")
             .withArgs(operator.address, TEST_ADDR, false);
           expect(await store.getAvailableOperation()).to.eq(ZERO_ADDR);
-          expect(await store.getRunningOperationAt(0)).to.eq(ZERO_ADDR);
+          expect(await store.getQueuedOperationAt(Queue.RUNNING, 0)).to.eq(
+            ZERO_ADDR
+          );
           expect(await store.getStatusOf(TEST_ADDR)).to.eq(
             Status.RUNNING_MANUAL
           );
@@ -95,7 +99,9 @@ describe("OperationStore", () => {
 
           expect(await store.getStatusOf(TEST_ADDR)).to.eq(Status.IDLE);
           expect(await store.getAvailableOperation()).to.eq(TEST_ADDR);
-          expect(await store.getRunningOperationAt(0)).to.eq(ZERO_ADDR);
+          expect(await store.getQueuedOperationAt(Queue.RUNNING, 0)).to.eq(
+            ZERO_ADDR
+          );
         });
       });
 
@@ -105,7 +111,9 @@ describe("OperationStore", () => {
             .to.emit(store, "OperationStopped")
             .withArgs(operator.address, TEST_ADDR);
           expect(await store.getAvailableOperation()).to.eq(ZERO_ADDR);
-          expect(await store.getStoppedOperationAt(0)).to.eq(TEST_ADDR);
+          expect(await store.getQueuedOperationAt(Queue.STOPPED, 0)).to.eq(
+            TEST_ADDR
+          );
         });
 
         it("#running", async () => {
@@ -124,8 +132,12 @@ describe("OperationStore", () => {
               Queue.STOPPED
             );
 
-          expect(await store.getRunningOperationAt(0)).to.eq(ZERO_ADDR);
-          expect(await store.getStoppedOperationAt(0)).to.eq(TEST_ADDR);
+          expect(await store.getQueuedOperationAt(Queue.RUNNING, 0)).to.eq(
+            ZERO_ADDR
+          );
+          expect(await store.getQueuedOperationAt(Queue.STOPPED, 0)).to.eq(
+            TEST_ADDR
+          );
         });
 
         describe("#queue", () => {
@@ -146,7 +158,9 @@ describe("OperationStore", () => {
               .withArgs(operator.address, TEST_ADDR, Queue.STOPPED, Queue.IDLE);
 
             expect(await store.getStatusOf(TEST_ADDR)).to.eq(Status.IDLE);
-            expect(await store.getStoppedOperationAt(0)).to.eq(ZERO_ADDR);
+            expect(await store.getQueuedOperationAt(Queue.STOPPED, 0)).to.eq(
+              ZERO_ADDR
+            );
             expect(await store.getAvailableOperation()).to.eq(TEST_ADDR);
           });
 
@@ -165,7 +179,9 @@ describe("OperationStore", () => {
             expect(await store.getStatusOf(TEST_ADDR)).to.eq(
               Status.DEALLOCATED
             );
-            expect(await store.getStoppedOperationAt(0)).to.eq(ZERO_ADDR);
+            expect(await store.getQueuedOperationAt(Queue.STOPPED, 0)).to.eq(
+              ZERO_ADDR
+            );
             expect(await store.getAvailableOperation()).to.eq(ZERO_ADDR);
           });
         });

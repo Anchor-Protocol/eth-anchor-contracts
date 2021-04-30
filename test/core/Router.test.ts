@@ -103,7 +103,9 @@ describe("Router", () => {
 
   describe("#_init", () => {
     it("should deploy new contract if theres no available operation", async () => {
-      await expect(router.connect(operator).depositStable(amount))
+      await expect(
+        router.connect(operator).functions["depositStable(uint256)"](amount)
+      )
         .to.emit(factory, "ContractDeployed")
         .to.emit(store, "OperationAllocated")
         .to.emit(aUST, "Approval")
@@ -123,7 +125,9 @@ describe("Router", () => {
     });
 
     it("#depositStable - auto", async () => {
-      await expect(router.connect(operator).depositStable(amount))
+      await expect(
+        router.connect(operator).functions["depositStable(uint256)"](amount)
+      )
         .to.emit(instance, "InitDeposit")
         .withArgs(operator.address, amount, hash1)
         .to.emit(instance, "AutoFinishEnabled")
@@ -166,7 +170,9 @@ describe("Router", () => {
     });
 
     it("#redeemStable - auto", async () => {
-      await expect(router.connect(operator).redeemStable(amount))
+      await expect(
+        router.connect(operator).functions["redeemStable(uint256)"](amount)
+      )
         .to.emit(instance, "InitRedemption")
         .withArgs(operator.address, amount, hash1)
         .to.emit(instance, "AutoFinishEnabled")
