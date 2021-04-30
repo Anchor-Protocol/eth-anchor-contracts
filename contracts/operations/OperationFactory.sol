@@ -14,8 +14,8 @@ interface OperationStandard {
 
 interface IOperationFactory {
     event ContractDeployed(
-        address indexed deployer,
         address indexed instance,
+        address indexed controller,
         bytes32 indexed terraAddress
     );
 
@@ -85,7 +85,7 @@ contract OperationFactory is IOperationFactory, Operator {
             ); // TODO: make terraAddress buffer
         OperationStandard(instance).initialize(payload);
 
-        emit ContractDeployed(msg.sender, instance, terraAddr);
+        emit ContractDeployed(instance, _controller, terraAddr);
 
         return instance;
     }
