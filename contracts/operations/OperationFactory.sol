@@ -21,7 +21,7 @@ interface IOperationFactory {
 
     function pushTerraAddresses(bytes32[] memory _addrs) external;
 
-    function fetchTerraAddressBufferSize() external view returns (uint256);
+    function fetchAddressBufferSize() external view returns (uint256);
 
     function fetchNextTerraAddress() external view returns (bytes32);
 
