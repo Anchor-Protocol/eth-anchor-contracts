@@ -126,7 +126,7 @@ contract ConversionPool is IConversionPool, Operator, Initializable {
         router.depositStable(ust);
 
         uint256 pER = feeder.exchangeRateOf(address(inputToken));
-        uint256 out = pER.mul(1e18).div(ust);
+        uint256 out = ust.mul(1e18).div(pER);
 
         outputToken.mint(out);
         outputToken.safeTransfer(msg.sender, out);
@@ -137,10 +137,10 @@ contract ConversionPool is IConversionPool, Operator, Initializable {
         outputToken.burn(_amount);
 
         uint256 pER = feeder.exchangeRateOf(address(inputToken));
-        uint256 out = pER.mul(_amount).div(1e18);
+        uint256 out = _amount.mul(pER).div(1e18);
 
         uint256 aER = feeder.exchangeRateOf(address(proxyInputToken));
-        uint256 redeemAmount = aER.mul(1e18).div(out);
+        uint256 redeemAmount = out.mul(1e18).div(aER);
 
         router.redeemStable(msg.sender, redeemAmount);
     }
