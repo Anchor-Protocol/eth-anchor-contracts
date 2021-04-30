@@ -64,9 +64,11 @@ contract ConversionPool is IConversionPool, Operator, Initializable {
         proxyOutputToken = IERC20(_proxyOutputToken);
 
         router = IRouter(_router);
-        uniRouter = IUniswapV2Router02(_uniRouter);
         proxyInputToken.safeApprove(address(router), type(uint256).max);
         proxyOutputToken.safeApprove(address(router), type(uint256).max);
+
+        uniRouter = IUniswapV2Router02(_uniRouter);
+        inputToken.safeApprove(address(uniRouter), type(uint256).max);
 
         feeder = IExchangeRateFeeder(_exchangeRateFeeder);
     }
