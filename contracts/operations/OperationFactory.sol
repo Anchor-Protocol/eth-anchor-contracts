@@ -19,6 +19,12 @@ interface IOperationFactory {
         bytes32 indexed terraAddress
     );
 
+    function pushTerraAddresses(bytes32[] memory _addrs) external;
+
+    function fetchTerraAddressBufferSize() external view returns (uint256);
+
+    function fetchNextTerraAddress() external view returns (bytes32);
+
     function build(uint256 _optId, address _controller)
         external
         returns (address);
@@ -40,13 +46,21 @@ contract OperationFactory is IOperationFactory, Operator {
     // terra address buffer
     EnumerableSet.Bytes32Set private terraAddresses;
 
-    function pushTerraAddresses(bytes32[] memory _addrs) public onlyOwner {
+    function pushTerraAddresses(bytes32[] memory _addrs)
+        public
+        override
+        onlyOwner
+    {
         for (uint256 i = 0; i < _addrs.length; i++) {
             terraAddresses.add(_addrs[i]);
         }
     }
 
-    function fetchNextTerraAddress() public view returns (bytes32) {
+    function fetchAddressBufferSize() public view override returns (uint256) {
+        return terraAddresses.length();
+    }
+
+    function fetchNextTerraAddress() public view override returns (bytes32) {
         return terraAddresses.at(0);
     }
 
