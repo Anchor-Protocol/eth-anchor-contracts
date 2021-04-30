@@ -71,9 +71,6 @@ contract Router is IRouter, Operator, Initializable {
     address public wUST;
     address public aUST;
 
-    // acl
-    address public bot;
-
     function initialize(
         address _optStore,
         uint256 _optStdId,
@@ -138,7 +135,7 @@ contract Router is IRouter, Operator, Initializable {
             // check msg.sender || bot
             require(
                 IOperation(_opt).getCurrentStatus().operator == msg.sender ||
-                    bot == msg.sender,
+                    operator == msg.sender,
                 "Router: invalid sender"
             );
         } else {
