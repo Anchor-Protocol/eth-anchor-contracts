@@ -70,5 +70,7 @@ describe("OperationFactory", () => {
     );
     expect(await operation.terraAddress()).to.eq(hash1);
     expect(await instance.terraAddress()).to.eq(hash2);
+
+    expect(operation.address).not.to.eq(instance.address);
   });
 });
