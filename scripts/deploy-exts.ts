@@ -22,7 +22,7 @@ async function main() {
   tx = await feeder
     .connect(operator)
     .addToken(
-      ropsten.aUST,
+      ropsten.UST,
       constants.WeiPerEther,
       86400,
       BigNumber.from("1000015954686906531")
@@ -41,7 +41,7 @@ async function main() {
   console.log(`waiting ${feeder.address} ${tx.hash}`);
   await provider.waitForTransaction(tx.hash, 2);
 
-  tx = await feeder.connect(operator).startUpdate([ropsten.aUST, ropsten.DAI]);
+  tx = await feeder.connect(operator).startUpdate([ropsten.UST, ropsten.DAI]);
   console.log(`waiting ${feeder.address} ${tx.hash}`);
   await provider.waitForTransaction(tx.hash, 2);
 
