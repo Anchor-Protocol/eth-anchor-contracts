@@ -18,6 +18,11 @@ import {
   filterStructFields,
   latestBlocktime,
 } from "../shared/utilities";
+import {
+  HOUR_PERIOD,
+  HOUR_YIELD_15,
+  HOUR_YIELD_20,
+} from "../utils/TypeExchangeRateFeeder";
 
 chai.use(solidity);
 
@@ -35,10 +40,6 @@ describe("ExchangeRateFeeder", () => {
   let tokenB: Contract;
   let feeder: Contract;
 
-  const PERIOD = 3600;
-  const YIELD_15 = BigNumber.from("1000015954686906531");
-  const YIELD_20 = BigNumber.from("1000020813179695551");
-
   beforeEach("deploy contract", async () => {
     const TestAsset = await ethers.getContractFactory("TestAsset");
     tokenA = await TestAsset.connect(owner).deploy();
@@ -51,10 +52,20 @@ describe("ExchangeRateFeeder", () => {
     await feeder.connect(owner).transferOperator(operator.address);
     await feeder
       .connect(owner)
-      .addToken(tokenA.address, constants.WeiPerEther, PERIOD, YIELD_15);
+      .addToken(
+        tokenA.address,
+        constants.WeiPerEther,
+        HOUR_PERIOD,
+        HOUR_YIELD_15
+      );
     await feeder
       .connect(owner)
-      .addToken(tokenB.address, constants.WeiPerEther, PERIOD, YIELD_20);
+      .addToken(
+        tokenB.address,
+        constants.WeiPerEther,
+        HOUR_PERIOD,
+        HOUR_YIELD_20
+      );
   });
 
   it("controll", async () => {
