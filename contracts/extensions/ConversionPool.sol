@@ -15,6 +15,14 @@ import {IRouter} from "../core/Router.sol";
 import {Operator} from "../utils/Operator.sol";
 import {IERC20Controlled, ERC20Controlled} from "../utils/ERC20Controlled.sol";
 
+interface ISwapper {
+    function swapTokens(
+        address _from,
+        address _to,
+        uint256 _amount
+    ) external;
+}
+
 interface IConversionPool {
     function deposit(uint256 _amount) external;
 
@@ -30,16 +38,13 @@ contract ConversionPool is IConversionPool, Operator, Initializable {
     IERC20 public inputToken; // DAI / USDC / USDT
     IERC20Controlled public outputToken; // aDAI / aUSDC / aUSDT
 
-    // swap
-    address public weth;
-
     // proxy settings
     IERC20 public proxyInputToken; // UST
     IERC20 public proxyOutputToken; // aUST
-    uint256 public proxyReserve; // aUST reserve
+    uint256 public proxyReserve = 0; // aUST reserve
 
-    IRouter public router;
-    IUniswapV2Router02 public uniRouter;
+    IRouter public optRouter;
+    ISwapper public swapRouter;
     IExchangeRateFeeder public feeder;
 
     function initialize(
@@ -47,29 +52,41 @@ contract ConversionPool is IConversionPool, Operator, Initializable {
         string memory _outputTokenName,
         string memory _outputTokenSymbol,
         address _inputToken,
-        address _weth,
         address _proxyInputToken,
         address _proxyOutputToken,
         // ===== others
-        address _router,
-        address _uniRouter,
+        address _optRouter,
+        address _swapRouter,
         address _exchangeRateFeeder
     ) public initializer {
         inputToken = IERC20(_inputToken);
         outputToken = new ERC20Controlled(_outputTokenName, _outputTokenSymbol);
 
-        weth = _weth;
-
         proxyInputToken = IERC20(_proxyInputToken);
         proxyOutputToken = IERC20(_proxyOutputToken);
 
-        router = IRouter(_router);
-        proxyInputToken.safeApprove(address(router), type(uint256).max);
-        proxyOutputToken.safeApprove(address(router), type(uint256).max);
+        setSwapRouter(_swapRouter);
+        setOperationRouter(_optRouter);
+        setExchangeRateFeeder(_exchangeRateFeeder);
+    }
 
-        uniRouter = IUniswapV2Router02(_uniRouter);
-        inputToken.safeApprove(address(uniRouter), type(uint256).max);
+    // governance
 
+    function setSwapRouter(address _swapRouter) public onlyOwner {
+        swapRouter = ISwapper(_swapRouter);
+        inputToken.safeApprove(address(swapRouter), type(uint256).max);
+    }
+
+    function setOperationRouter(address _optRouter) public onlyOwner {
+        optRouter = IRouter(_optRouter);
+        proxyInputToken.safeApprove(address(optRouter), type(uint256).max);
+        proxyOutputToken.safeApprove(address(optRouter), type(uint256).max);
+    }
+
+    function setExchangeRateFeeder(address _exchangeRateFeeder)
+        public
+        onlyOwner
+    {
         feeder = IExchangeRateFeeder(_exchangeRateFeeder);
     }
 
@@ -86,44 +103,19 @@ contract ConversionPool is IConversionPool, Operator, Initializable {
     }
 
     // operations
-    function _swapUniswap(
-        address _from,
-        address _to,
-        uint256 _amount
-    ) internal {
-        require(_to != address(0));
-
-        address[] memory path;
-
-        if (_from == weth || _to == weth) {
-            path = new address[](2);
-            path[0] = _from;
-            path[1] = _to;
-        } else {
-            path = new address[](3);
-            path[0] = _from;
-            path[1] = weth;
-            path[2] = _to;
-        }
-
-        uniRouter.swapExactTokensForTokens(
-            _amount,
-            0,
-            path,
-            address(this),
-            block.timestamp.add(60)
-        );
-    }
-
     function deposit(uint256 _amount) public override {
         inputToken.safeTransferFrom(msg.sender, address(this), _amount);
 
         // swap to UST
-        _swapUniswap(address(inputToken), address(proxyInputToken), _amount);
+        swapRouter.swapTokens(
+            address(inputToken),
+            address(proxyInputToken),
+            _amount
+        );
 
         // depositStable
         uint256 ust = proxyInputToken.balanceOf(address(this));
-        router.depositStable(ust);
+        optRouter.depositStable(ust);
 
         uint256 pER = feeder.exchangeRateOf(address(inputToken));
         uint256 out = ust.mul(1e18).div(pER);
@@ -142,6 +134,6 @@ contract ConversionPool is IConversionPool, Operator, Initializable {
         uint256 aER = feeder.exchangeRateOf(address(proxyInputToken));
         uint256 redeemAmount = out.mul(1e18).div(aER);
 
-        router.redeemStable(msg.sender, redeemAmount);
+        optRouter.redeemStable(msg.sender, redeemAmount);
     }
 }
