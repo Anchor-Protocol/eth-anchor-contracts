@@ -9,7 +9,7 @@ async function main() {
 
   const Operation = await ethers.getContractFactory("Operation");
   const OperationStore = await ethers.getContractFactory("OperationStore");
-  const Factory = await ethers.getContractFactory("Factory");
+  const OperationFactory = await ethers.getContractFactory("OperationFactory");
   const Router = await ethers.getContractFactory("Router");
 
   const { ropsten } = CONTRACTS;
@@ -22,7 +22,7 @@ async function main() {
   await provider.waitForTransaction(store.deployTransaction.hash, 2);
 
   // deploy factory
-  const factory = await Factory.connect(operator).deploy();
+  const factory = await OperationFactory.connect(operator).deploy();
   console.log(`waiting ${factory.address} ${factory.deployTransaction.hash}`);
   await provider.waitForTransaction(factory.deployTransaction.hash, 2);
 

@@ -61,7 +61,7 @@ describe("OperationFactory", () => {
     const receipt = await provider.getTransactionReceipt(tx.hash);
     const desc = factory.interface.parseLog(receipt.logs[0]);
 
-    expect(desc.args.deployer).to.eq(controller.address);
+    expect(desc.args.controller).to.eq(controller.address);
     expect(desc.args.terraAddress).to.eq(hash2);
 
     const instance = await ethers.getContractAt(
@@ -70,5 +70,7 @@ describe("OperationFactory", () => {
     );
     expect(await operation.terraAddress()).to.eq(hash1);
     expect(await instance.terraAddress()).to.eq(hash2);
+
+    expect(operation.address).not.to.eq(instance.address);
   });
 });
