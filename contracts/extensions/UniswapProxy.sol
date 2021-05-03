@@ -12,7 +12,7 @@ import {
 
 import {ISwapper} from "./ConversionPool.sol";
 
-contract UniSwapProxy is ISwapper, Ownable {
+contract UniswapProxy is ISwapper, Ownable {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
