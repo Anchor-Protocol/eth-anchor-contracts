@@ -29,7 +29,7 @@ import {
 
 chai.use(solidity);
 
-describe("ConversionPoo", async () => {
+describe("ConversionPool", async () => {
   const { provider } = ethers;
 
   let owner: SignerWithAddress;
@@ -57,6 +57,7 @@ describe("ConversionPoo", async () => {
   let ust: Contract;
   let dai: Contract;
   let aust: Contract;
+  let adai: Contract;
 
   // core
   let store: Contract;
@@ -71,6 +72,7 @@ describe("ConversionPoo", async () => {
   const EMPTY_HASH =
     "0x0000000000000000000000000000000000000000000000000000000000000000";
   const SIZE = 20;
+  const LIQUIDITY = constants.WeiPerEther.mul(100000);
 
   beforeEach("deploy contracts", async () => {
     const TestAsset = await ethers.getContractFactory("TestAsset");
@@ -78,11 +80,28 @@ describe("ConversionPoo", async () => {
     dai = await TestAsset.connect(owner).deploy();
     aust = await TestAsset.connect(owner).deploy();
 
+    // uniswap
     uniFactory = await UniFactory.connect(owner).deploy(constants.AddressZero);
     uniRouter = await UniRouter.connect(owner).deploy(
       uniFactory.address,
       constants.AddressZero // no weth
     );
+    for await (const token of [ust, dai]) {
+      await token.connect(owner).mint(owner.address, LIQUIDITY);
+      await token.connect(owner).approve(uniRouter.address, LIQUIDITY);
+    }
+    await uniRouter
+      .connect(owner)
+      .addLiquidity(
+        ust.address,
+        dai.address,
+        LIQUIDITY,
+        LIQUIDITY,
+        0,
+        0,
+        owner.address,
+        (await latestBlocktime(provider)) + 60
+      );
 
     // core
     const Store = await ethers.getContractFactory("OperationStore");
@@ -115,11 +134,9 @@ describe("ConversionPoo", async () => {
     // extensions
     const Pool = await ethers.getContractFactory("ConversionPool");
     const Feeder = await ethers.getContractFactory("ExchangeRateFeeder");
-    const Swapper = await ethers.getContractFactory("UniswapProxy");
 
     pool = await Pool.connect(owner).deploy();
     feeder = await Feeder.connect(owner).deploy();
-    swapper = await Swapper.connect(owner).deploy(uniRouter.address);
 
     await feeder
       .connect(owner)
@@ -131,15 +148,20 @@ describe("ConversionPoo", async () => {
     await pool
       .connect(owner)
       .initialize(
-        "Anchor Test Token",
-        "aTNT",
+        "Anchor DAI Token",
+        "aDAI",
         dai.address,
         ust.address,
         aust.address,
         router.address,
-        swapper.address,
+        uniFactory.address,
         feeder.address
       );
+
+    adai = await ethers.getContractAt(
+      "ERC20Controlled",
+      await pool.outputToken()
+    );
   });
 
   describe("after start", () => {
@@ -156,11 +178,35 @@ describe("ConversionPoo", async () => {
         }
       }
       await factory.connect(owner).pushTerraAddresses(addrs);
-      await router.connect(owner).allocate(SIZE);
     });
 
-    it("asdf", async () => {
-      expect("asdf").to.eq("asdf");
+    const amount = constants.WeiPerEther.mul(20);
+
+    it("works well with allocated operation", async () => {
+      // allocation
+      await router.connect(owner).allocate(SIZE);
+
+      await dai.connect(owner).mint(operator.address, amount);
+      await dai.connect(operator).approve(pool.address, amount);
+      await pool.connect(operator).deposit(amount);
+      console.log(utils.formatEther(await adai.balanceOf(operator.address)));
+
+      await aust.connect(owner).mint(pool.address, amount);
+      const aDAIAmount = await adai.balanceOf(operator.address);
+      await adai.connect(operator).approve(pool.address, aDAIAmount);
+      await pool.connect(operator).redeem(aDAIAmount);
+    });
+
+    it("works well with deploy new operation", async () => {
+      await dai.connect(owner).mint(operator.address, amount);
+      await dai.connect(operator).approve(pool.address, amount);
+      await pool.connect(operator).deposit(amount);
+      console.log(utils.formatEther(await adai.balanceOf(operator.address)));
+
+      await aust.connect(owner).mint(pool.address, amount);
+      const aDAIAmount = await adai.balanceOf(operator.address);
+      await adai.connect(operator).approve(pool.address, aDAIAmount);
+      await pool.connect(operator).redeem(aDAIAmount);
     });
   });
 });
