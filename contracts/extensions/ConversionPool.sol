@@ -7,25 +7,15 @@ import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
 import {
-    IUniswapV2Router02
-} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-import {
     IUniswapV2Pair
 } from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
 import {IExchangeRateFeeder} from "./ExchangeRateFeeder.sol";
 import {IRouter} from "../core/Router.sol";
 import {Operator} from "../utils/Operator.sol";
+import {ISwapper} from "../swapper/ISwapper.sol";
 import {IERC20Controlled, ERC20Controlled} from "../utils/ERC20Controlled.sol";
 import {UniswapV2Library} from "../libraries/UniswapV2Library.sol";
-
-interface ISwapper {
-    function swapTokens(
-        address _from,
-        address _to,
-        uint256 _amount
-    ) external;
-}
 
 interface IConversionPool {
     function deposit(uint256 _amount) external;
@@ -43,8 +33,7 @@ contract ConversionPool is IConversionPool, Operator, Initializable {
     IERC20Controlled public outputToken; // aDAI / aUSDC / aUSDT
 
     // swap settings
-    address public swapFactory;
-    address public bridgeToken;
+    ISwapper public swapper;
 
     // proxy settings
     IERC20 public proxyInputToken; // UST
@@ -63,7 +52,7 @@ contract ConversionPool is IConversionPool, Operator, Initializable {
         address _proxyOutputToken,
         // ===== others
         address _optRouter,
-        address _swapFactory,
+        address _swapper,
         address _exchangeRateFeeder
     ) public initializer {
         inputToken = IERC20(_inputToken);
@@ -72,19 +61,16 @@ contract ConversionPool is IConversionPool, Operator, Initializable {
         proxyInputToken = IERC20(_proxyInputToken);
         proxyOutputToken = IERC20(_proxyOutputToken);
 
-        setSwapFactory(_swapFactory);
+        setSwapper(_swapper);
         setOperationRouter(_optRouter);
         setExchangeRateFeeder(_exchangeRateFeeder);
     }
 
     // governance
 
-    function setBridgeToken(address _bridgeToken) public onlyOwner {
-        bridgeToken = _bridgeToken;
-    }
-
-    function setSwapFactory(address _swapFactory) public onlyOwner {
-        swapFactory = _swapFactory;
+    function setSwapper(address _swapper) public onlyOwner {
+        swapper = ISwapper(_swapper);
+        inputToken.safeApprove(address(swapper), type(uint256).max);
     }
 
     function setOperationRouter(address _optRouter) public onlyOwner {
@@ -112,65 +98,16 @@ contract ConversionPool is IConversionPool, Operator, Initializable {
         proxyOutputToken.safeTransfer(msg.sender, _amount);
     }
 
-    // swap: fetched from Uniswap/uniswap-v2-periphery
-    function _swap(
-        uint256[] memory amounts,
-        address[] memory path,
-        address _to
-    ) private {
-        for (uint256 i; i < path.length - 1; i++) {
-            (address input, address output) = (path[i], path[i + 1]);
-            (address token0, ) = UniswapV2Library.sortTokens(input, output);
-            uint256 amountOut = amounts[i + 1];
-            (uint256 amount0Out, uint256 amount1Out) =
-                input == token0
-                    ? (uint256(0), amountOut)
-                    : (amountOut, uint256(0));
-            address to =
-                i < path.length - 2
-                    ? UniswapV2Library.pairFor(swapFactory, output, path[i + 2])
-                    : _to;
-            IUniswapV2Pair(UniswapV2Library.pairFor(swapFactory, input, output))
-                .swap(amount0Out, amount1Out, to, new bytes(0));
-        }
-    }
-
-    function _swapToken(
-        address _from,
-        address _to,
-        uint256 _amount
-    ) internal {
-        address[] memory path;
-
-        if (bridgeToken == address(0x0)) {
-            path = new address[](2);
-            path[0] = _from;
-            path[1] = _to;
-        } else {
-            path = new address[](3);
-            path[0] = _from;
-            path[1] = bridgeToken;
-            path[2] = _to;
-        }
-
-        uint256[] memory amounts =
-            UniswapV2Library.getAmountsOut(swapFactory, _amount, path);
-        require(
-            amounts[amounts.length - 1] >= 0,
-            "UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT"
-        );
-        IERC20(path[0]).safeTransferFrom(
-            msg.sender,
-            UniswapV2Library.pairFor(swapFactory, path[0], path[1]),
-            amounts[0]
-        );
-        _swap(amounts, path, address(this));
-    }
-
     // operations
+
     function deposit(uint256 _amount) public override {
         // swap to UST
-        _swapToken(address(inputToken), address(proxyInputToken), _amount);
+        swapper.swapToken(
+            address(inputToken),
+            address(proxyInputToken),
+            _amount,
+            address(this)
+        );
 
         // depositStable
         uint256 ust = proxyInputToken.balanceOf(address(this));
