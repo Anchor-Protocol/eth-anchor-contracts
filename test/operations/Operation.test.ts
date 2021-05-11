@@ -109,7 +109,13 @@ describe("Operation", () => {
       await expect(
         operation
           .connect(controller)
-          .initDepositStable(controller.address, amount, true)
+          .initDepositStable(
+            controller.address,
+            amount,
+            ZERO_ADDR,
+            ZERO_ADDR,
+            true
+          )
       )
         .to.emit(operation, "InitDeposit")
         .withArgs(controller.address, amount, hash1)
@@ -148,7 +154,13 @@ describe("Operation", () => {
       await expect(
         operation
           .connect(controller)
-          .initRedeemStable(controller.address, amount, true)
+          .initRedeemStable(
+            controller.address,
+            amount,
+            ZERO_ADDR,
+            ZERO_ADDR,
+            true
+          )
       )
         .to.emit(operation, "InitRedemption")
         .withArgs(controller.address, amount, hash1)
@@ -220,7 +232,13 @@ describe("Operation", () => {
 
       await operation
         .connect(controller)
-        .initDepositStable(controller.address, amount, true);
+        .initDepositStable(
+          controller.address,
+          amount,
+          ZERO_ADDR,
+          ZERO_ADDR,
+          true
+        );
       await wUST.connect(owner).transfer(operation.address, amount);
       await operation.connect(controller).halt();
 

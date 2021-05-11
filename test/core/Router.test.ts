@@ -151,7 +151,9 @@ describe("Router", () => {
     });
 
     it("#depositStable - manual", async () => {
-      await expect(router.connect(operator).initDepositStable(amount))
+      await expect(
+        router.connect(operator).functions["initDepositStable(uint256)"](amount)
+      )
         .to.emit(instance, "InitDeposit")
         .withArgs(operator.address, amount, hash1);
       expect(await store.getStatusOf(instance.address)).to.eq(
@@ -196,7 +198,9 @@ describe("Router", () => {
     });
 
     it("#redeemStable - manual", async () => {
-      await expect(router.connect(operator).initRedeemStable(amount))
+      await expect(
+        router.connect(operator).functions["initRedeemStable(uint256)"](amount)
+      )
         .to.emit(instance, "InitRedemption")
         .withArgs(operator.address, amount, hash1);
       expect(await store.getStatusOf(instance.address)).to.eq(

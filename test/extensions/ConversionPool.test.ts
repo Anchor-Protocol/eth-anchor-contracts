@@ -134,9 +134,11 @@ describe("ConversionPool", async () => {
     // extensions
     const Pool = await ethers.getContractFactory("ConversionPool");
     const Feeder = await ethers.getContractFactory("ExchangeRateFeeder");
+    const Swapper = await ethers.getContractFactory("UniswapSwapper");
 
     pool = await Pool.connect(owner).deploy();
     feeder = await Feeder.connect(owner).deploy();
+    swapper = await Swapper.connect(owner).deploy();
 
     await feeder
       .connect(owner)
@@ -144,6 +146,8 @@ describe("ConversionPool", async () => {
     await feeder
       .connect(owner)
       .addToken(dai.address, constants.WeiPerEther, HOUR_PERIOD, HOUR_YIELD_15);
+
+    await swapper.connect(owner).setSwapFactory(uniFactory.address);
 
     await pool
       .connect(owner)
@@ -154,7 +158,7 @@ describe("ConversionPool", async () => {
         ust.address,
         aust.address,
         router.address,
-        uniFactory.address,
+        swapper.address,
         feeder.address
       );
 
