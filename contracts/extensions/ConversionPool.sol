@@ -101,6 +101,8 @@ contract ConversionPool is IConversionPool, Operator, Initializable {
     // operations
 
     function deposit(uint256 _amount) public override {
+        inputToken.safeTransferFrom(msg.sender, address(this), _amount);
+
         // swap to UST
         swapper.swapToken(
             address(inputToken),
@@ -124,6 +126,11 @@ contract ConversionPool is IConversionPool, Operator, Initializable {
         uint256 out = _amount.mul(pER).div(1e18);
 
         uint256 aER = feeder.exchangeRateOf(address(proxyInputToken));
-        optRouter.redeemStable(msg.sender, out.mul(1e18).div(aER));
+        optRouter.redeemStable(
+            msg.sender,
+            out.mul(1e18).div(aER),
+            address(swapper),
+            address(inputToken)
+        );
     }
 }
