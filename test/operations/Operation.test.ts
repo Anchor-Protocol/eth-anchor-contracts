@@ -7,9 +7,13 @@ import {
   BigNumber,
   utils,
   BigNumberish,
+  constants,
 } from "ethers";
 import { Provider } from "@ethersproject/providers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+
+import UniFactoryMeta from "@uniswap/v2-core/build/UniswapV2Factory.json";
+import UniRouterMeta from "@uniswap/v2-periphery/build/UniswapV2Router02.json";
 
 import {
   advanceTimeAndBlock,
@@ -34,6 +38,8 @@ describe("Operation", () => {
     "amount",
     "input",
     "output",
+    "swapper",
+    "swapDest",
   ];
 
   let owner: SignerWithAddress;
@@ -43,19 +49,59 @@ describe("Operation", () => {
     [owner, controller] = await ethers.getSigners();
   });
 
+  // factories
+  const UniFactory = new ContractFactory(
+    UniFactoryMeta.abi,
+    UniFactoryMeta.bytecode
+  );
+  const UniRouter = new ContractFactory(
+    UniRouterMeta.abi,
+    UniRouterMeta.bytecode
+  );
+
+  let uniFactory: Contract;
+  let uniRouter: Contract;
+
+  let dai: Contract;
   let wUST: Contract;
   let aUST: Contract;
+
+  let swapper: Contract;
   let operation: Contract;
 
   const hash1 =
     "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
   const hash2 =
     "0xbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdead";
+  const LIQUIDITY = constants.WeiPerEther.mul(100000);
 
   beforeEach("deploy contract", async () => {
     const TestAsset = await ethers.getContractFactory("TestAsset");
+    dai = await TestAsset.connect(owner).deploy();
     wUST = await TestAsset.connect(owner).deploy();
     aUST = await TestAsset.connect(owner).deploy();
+
+    uniFactory = await UniFactory.connect(owner).deploy(constants.AddressZero);
+    uniRouter = await UniRouter.connect(owner).deploy(
+      uniFactory.address,
+      constants.AddressZero
+    );
+    for await (const token of [dai, wUST]) {
+      await token.connect(owner).mint(owner.address, LIQUIDITY);
+      await token.connect(owner).approve(uniRouter.address, LIQUIDITY);
+    }
+    await uniRouter
+      .connect(owner)
+      .addLiquidity(
+        wUST.address,
+        dai.address,
+        LIQUIDITY,
+        LIQUIDITY,
+        0,
+        0,
+        owner.address,
+        (await latestBlocktime(provider)) + 60
+      );
 
     const Operation = await ethers.getContractFactory("Operation");
     operation = await Operation.connect(owner).deploy();
@@ -73,6 +119,11 @@ describe("Operation", () => {
       await token.connect(owner).mint(controller.address, amount);
       await token.connect(controller).approve(operation.address, amount);
     }
+
+    const Swapper = await ethers.getContractFactory("UniswapSwapper");
+    swapper = await Swapper.connect(owner).deploy();
+
+    await swapper.connect(owner).setSwapFactory(uniFactory.address);
   });
 
   it("initialize", async () => {
@@ -98,6 +149,8 @@ describe("Operation", () => {
         amount: BigNumber.from(0),
         input: ZERO_ADDR,
         output: ZERO_ADDR,
+        swapper: ZERO_ADDR,
+        swapDest: ZERO_ADDR,
       });
     }
 
@@ -134,6 +187,8 @@ describe("Operation", () => {
         amount,
         input: wUST.address,
         output: aUST.address,
+        swapper: ZERO_ADDR,
+        swapDest: ZERO_ADDR,
       });
 
       expect(await wUST.balanceOf(controller.address)).to.eq(0);
@@ -179,6 +234,8 @@ describe("Operation", () => {
         amount,
         input: aUST.address,
         output: wUST.address,
+        swapper: ZERO_ADDR,
+        swapDest: ZERO_ADDR,
       });
 
       expect(await aUST.balanceOf(controller.address)).to.eq(0);
@@ -193,6 +250,54 @@ describe("Operation", () => {
 
       expect(await wUST.balanceOf(owner.address)).to.eq(0);
       expect(await wUST.balanceOf(controller.address)).to.eq(amount.mul(2));
+    });
+
+    it("redeem stable with conversion", async () => {
+      await expect(
+        operation
+          .connect(controller)
+          .initRedeemStable(
+            controller.address,
+            amount,
+            swapper.address,
+            dai.address,
+            true
+          )
+      )
+        .to.emit(operation, "InitRedemption")
+        .withArgs(controller.address, amount, hash1)
+        .to.emit(operation, "AutoFinishEnabled")
+        .withArgs(operation.address);
+
+      const currentStatus = await filterStructFields(
+        operationInfoFields,
+        operation.getCurrentStatus()
+      );
+
+      expect(currentStatus).to.deep.eq({
+        status: 1,
+        typ: 2,
+        operator: controller.address,
+        amount,
+        input: aUST.address,
+        output: wUST.address,
+        swapper: swapper.address,
+        swapDest: dai.address,
+      });
+
+      expect(await aUST.balanceOf(controller.address)).to.eq(0);
+      expect(await aUST.balanceOf(owner.address)).to.eq(amount.mul(2));
+
+      // ========================= FINISH
+      await wUST.connect(owner).transfer(operation.address, amount); // fulfill condition
+
+      await expect(operation.connect(controller).finish())
+        .to.emit(operation, "FinishRedemption")
+        .withArgs(controller.address, amount);
+
+      expect(await wUST.balanceOf(owner.address)).to.eq(0);
+      expect(await wUST.balanceOf(controller.address)).to.eq(ETH.mul(10));
+      console.log(utils.formatEther(await dai.balanceOf(controller.address)));
     });
 
     it("fail / recover", async () => {
