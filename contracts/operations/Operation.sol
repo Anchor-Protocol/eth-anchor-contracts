@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
 import {WrappedAsset} from "../assets/WrappedAsset.sol";
+import {ISwapper} from "../swapper/ISwapper.sol";
 
 interface IOperation {
     // Events
@@ -30,6 +31,8 @@ interface IOperation {
         uint256 amount;
         address input;
         address output;
+        address swapper;
+        address swapDest;
     }
 
     // Interfaces
@@ -42,12 +45,16 @@ interface IOperation {
     function initDepositStable(
         address _operator,
         uint256 _amount,
+        address _swapper,
+        address _swapDest,
         bool _autoFinish
     ) external;
 
     function initRedeemStable(
         address _operator,
         uint256 _amount,
+        address _swapper,
+        address _swapDest,
         bool _autoFinish
     ) external;
 
@@ -77,7 +84,9 @@ contract Operation is Ownable, IOperation, Initializable {
             operator: address(0x0),
             amount: 0,
             input: address(0x0),
-            output: address(0x0)
+            output: address(0x0),
+            swapper: address(0x0),
+            swapDest: address(0x0)
         });
     Info public currentStatus;
 
@@ -130,6 +139,8 @@ contract Operation is Ownable, IOperation, Initializable {
         Type _typ,
         address _operator,
         uint256 _amount,
+        address _swapper,
+        address _swapDest,
         bool _autoFinish
     ) private checkStopped {
         require(currentStatus.status == Status.IDLE, "Operation: running");
@@ -141,7 +152,9 @@ contract Operation is Ownable, IOperation, Initializable {
             operator: _operator,
             amount: _amount,
             input: address(0x0),
-            output: address(0x0)
+            output: address(0x0),
+            swapper: _swapper,
+            swapDest: _swapDest
         });
 
         if (_typ == Type.DEPOSIT) {
@@ -172,17 +185,35 @@ contract Operation is Ownable, IOperation, Initializable {
     function initDepositStable(
         address _operator,
         uint256 _amount,
+        address _swapper,
+        address _swapDest,
         bool _autoFinish
     ) public override onlyController {
-        _init(Type.DEPOSIT, _operator, _amount, _autoFinish);
+        _init(
+            Type.DEPOSIT,
+            _operator,
+            _amount,
+            _swapper,
+            _swapDest,
+            _autoFinish
+        );
     }
 
     function initRedeemStable(
         address _operator,
         uint256 _amount,
+        address _swapper,
+        address _swapDest,
         bool _autoFinish
     ) public override onlyController {
-        _init(Type.REDEEM, _operator, _amount, _autoFinish);
+        _init(
+            Type.REDEEM,
+            _operator,
+            _amount,
+            _swapper,
+            _swapDest,
+            _autoFinish
+        );
     }
 
     function _finish() private checkStopped returns (address, uint256) {
@@ -192,9 +223,20 @@ contract Operation is Ownable, IOperation, Initializable {
         WrappedAsset output = WrappedAsset(currentStatus.output);
         uint256 amount = output.balanceOf(address(this));
         address operator = currentStatus.operator;
+        address swapper = currentStatus.swapper;
 
         require(amount > 0, "Operation: not enough token");
-        output.safeTransfer(operator, amount);
+
+        if (swapper != address(0x0)) {
+            ISwapper(swapper).swapToken(
+                address(output),
+                currentStatus.swapDest,
+                amount,
+                operator
+            );
+        } else {
+            output.safeTransfer(operator, amount);
+        }
 
         // prevent multiple reference
         Type typ = currentStatus.typ;
