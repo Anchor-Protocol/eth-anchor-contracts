@@ -228,12 +228,18 @@ contract Operation is Ownable, IOperation, Initializable {
         require(amount > 0, "Operation: not enough token");
 
         if (swapper != address(0x0)) {
-            ISwapper(swapper).swapToken(
-                address(output),
-                currentStatus.swapDest,
-                amount,
-                operator
-            );
+            output.safeIncreaseAllowance(swapper, amount);
+
+            try
+                ISwapper(swapper).swapToken(
+                    address(output),
+                    currentStatus.swapDest,
+                    amount,
+                    operator
+                )
+            {} catch {
+                output.safeTransfer(operator, amount);
+            }
         } else {
             output.safeTransfer(operator, amount);
         }
