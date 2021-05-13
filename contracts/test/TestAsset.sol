@@ -8,7 +8,7 @@ import {WrappedAsset} from "../assets/WrappedAsset.sol";
 contract TestAsset is WrappedAsset, ERC20 {
     address public owner;
 
-    constructor() ERC20("TestAsset", "TA") {
+    constructor() ERC20("TestAsset", "TKN") {
         owner = msg.sender;
     }
 
