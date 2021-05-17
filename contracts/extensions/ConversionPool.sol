@@ -4,6 +4,7 @@ pragma solidity >=0.6.0 <0.8.0;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
 import {
@@ -23,7 +24,7 @@ interface IConversionPool {
     function redeem(uint256 _amount) external;
 }
 
-contract ConversionPool is IConversionPool, Operator, Initializable {
+contract ConversionPool is IConversionPool, Context, Operator, Initializable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using SafeERC20 for IERC20Controlled;
@@ -90,18 +91,22 @@ contract ConversionPool is IConversionPool, Operator, Initializable {
 
     function provideReserve(uint256 _amount) public onlyGranted {
         proxyReserve = proxyReserve.add(_amount);
-        proxyOutputToken.safeTransferFrom(msg.sender, address(this), _amount);
+        proxyOutputToken.safeTransferFrom(
+            super._msgSender(),
+            address(this),
+            _amount
+        );
     }
 
     function removeReserve(uint256 _amount) public onlyGranted {
         proxyReserve = proxyReserve.sub(_amount);
-        proxyOutputToken.safeTransfer(msg.sender, _amount);
+        proxyOutputToken.safeTransfer(super._msgSender(), _amount);
     }
 
     // operations
 
     function deposit(uint256 _amount) public override {
-        inputToken.safeTransferFrom(msg.sender, address(this), _amount);
+        inputToken.safeTransferFrom(super._msgSender(), address(this), _amount);
 
         // swap to UST
         swapper.swapToken(
@@ -116,18 +121,18 @@ contract ConversionPool is IConversionPool, Operator, Initializable {
         optRouter.depositStable(ust);
 
         uint256 pER = feeder.exchangeRateOf(address(inputToken));
-        outputToken.mint(msg.sender, ust.mul(1e18).div(pER));
+        outputToken.mint(super._msgSender(), ust.mul(1e18).div(pER));
     }
 
     function redeem(uint256 _amount) public override {
-        outputToken.burnFrom(msg.sender, _amount);
+        outputToken.burnFrom(super._msgSender(), _amount);
 
         uint256 pER = feeder.exchangeRateOf(address(inputToken));
         uint256 out = _amount.mul(pER).div(1e18);
 
         uint256 aER = feeder.exchangeRateOf(address(proxyInputToken));
         optRouter.redeemStable(
-            msg.sender,
+            super._msgSender(),
             out.mul(1e18).div(aER),
             address(swapper),
             address(inputToken)
