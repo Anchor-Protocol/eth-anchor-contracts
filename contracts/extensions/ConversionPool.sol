@@ -12,7 +12,7 @@ import {
 } from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
 import {IExchangeRateFeeder} from "./ExchangeRateFeeder.sol";
-import {IRouter} from "../core/Router.sol";
+import {IRouter, IConversionRouter} from "../core/Router.sol";
 import {Operator} from "../utils/Operator.sol";
 import {ISwapper} from "../swapper/ISwapper.sol";
 import {IERC20Controlled, ERC20Controlled} from "../utils/ERC20Controlled.sol";
@@ -41,7 +41,7 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
     IERC20 public proxyOutputToken; // aUST
     uint256 public proxyReserve = 0; // aUST reserve
 
-    IRouter public optRouter;
+    address public optRouter;
     IExchangeRateFeeder public feeder;
 
     function initialize(
@@ -75,9 +75,9 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
     }
 
     function setOperationRouter(address _optRouter) public onlyOwner {
-        optRouter = IRouter(_optRouter);
-        proxyInputToken.safeApprove(address(optRouter), type(uint256).max);
-        proxyOutputToken.safeApprove(address(optRouter), type(uint256).max);
+        optRouter = _optRouter;
+        proxyInputToken.safeApprove(optRouter, type(uint256).max);
+        proxyOutputToken.safeApprove(optRouter, type(uint256).max);
     }
 
     function setExchangeRateFeeder(address _exchangeRateFeeder)
@@ -118,7 +118,7 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
 
         // depositStable
         uint256 ust = proxyInputToken.balanceOf(address(this));
-        optRouter.depositStable(ust);
+        IRouter(optRouter).depositStable(ust);
 
         uint256 pER = feeder.exchangeRateOf(address(inputToken));
         outputToken.mint(super._msgSender(), ust.mul(1e18).div(pER));
@@ -131,7 +131,7 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
         uint256 out = _amount.mul(pER).div(1e18);
 
         uint256 aER = feeder.exchangeRateOf(address(proxyInputToken));
-        optRouter.redeemStable(
+        IConversionRouter(optRouter).redeemStable(
             super._msgSender(),
             out.mul(1e18).div(aER),
             address(swapper),
