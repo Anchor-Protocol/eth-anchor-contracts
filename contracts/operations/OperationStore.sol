@@ -109,7 +109,9 @@ contract OperationStore is IOperationStore, Operator {
         override
         returns (address)
     {
-        if (_queue == Queue.RUNNING) {
+        if (_queue == Queue.IDLE) {
+            return optIdle.at(_index);
+        } else if (_queue == Queue.RUNNING) {
             return optRunning.getItemAt(_index);
         } else if (_queue == Queue.STOPPED) {
             return optStopped.getItemAt(_index);
@@ -124,7 +126,9 @@ contract OperationStore is IOperationStore, Operator {
         override
         returns (uint256)
     {
-        if (_queue == Queue.RUNNING) {
+        if (_queue == Queue.IDLE) {
+            return optIdle.length();
+        } else if (_queue == Queue.RUNNING) {
             return optRunning.length();
         } else if (_queue == Queue.STOPPED) {
             return optStopped.length();
