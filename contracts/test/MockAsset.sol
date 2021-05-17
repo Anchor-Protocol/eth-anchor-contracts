@@ -5,10 +5,12 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import {WrappedAsset} from "../assets/WrappedAsset.sol";
 
-contract TestAsset is WrappedAsset, ERC20 {
+contract MockAsset is WrappedAsset, ERC20 {
     address public owner;
 
-    constructor() ERC20("TestAsset", "TKN") {
+    constructor(string memory _name, string memory _symbol)
+        ERC20(_name, _symbol)
+    {
         owner = msg.sender;
     }
 
