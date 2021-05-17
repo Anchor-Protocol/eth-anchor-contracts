@@ -2,13 +2,14 @@
 pragma solidity >=0.6.0 <0.8.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
 import {WrappedAsset} from "../assets/WrappedAsset.sol";
+import {Operator} from "../utils/Operator.sol";
 import {ISwapper} from "../swapper/ISwapper.sol";
 
 interface IOperation {
@@ -36,7 +37,6 @@ interface IOperation {
     }
 
     // Interfaces
-    function controller() external view returns (address);
 
     function terraAddress() external view returns (bytes32);
 
@@ -72,7 +72,7 @@ interface IOperation {
 }
 
 // Operation.sol: subcontract generated per wallet, defining all relevant wrapping functions
-contract Operation is Ownable, IOperation, Initializable {
+contract Operation is Context, Operator, IOperation, Initializable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using SafeERC20 for WrappedAsset;
@@ -93,7 +93,6 @@ contract Operation is Ownable, IOperation, Initializable {
     WrappedAsset public wUST;
     WrappedAsset public aUST;
 
-    address public override controller;
     bytes32 public override terraAddress;
 
     function initialize(bytes memory args) public initializer {
@@ -105,10 +104,11 @@ contract Operation is Ownable, IOperation, Initializable {
         ) = abi.decode(args, (address, bytes32, address, address));
 
         currentStatus = DEFAULT_STATUS;
-        controller = _controller;
         terraAddress = _terraAddress;
         wUST = WrappedAsset(_wUST);
         aUST = WrappedAsset(_aUST);
+
+        super.transferOperator(_controller);
     }
 
     function initPayload(address _controller, bytes32 _terraAddress)
@@ -117,12 +117,6 @@ contract Operation is Ownable, IOperation, Initializable {
         returns (bytes memory)
     {
         return abi.encode(_controller, _terraAddress, wUST, aUST);
-    }
-
-    modifier onlyController {
-        require(controller == msg.sender, "Operation: not allowed");
-
-        _;
     }
 
     modifier checkStopped {
@@ -161,7 +155,7 @@ contract Operation is Ownable, IOperation, Initializable {
             currentStatus.input = address(wUST);
             currentStatus.output = address(aUST);
 
-            wUST.safeTransferFrom(msg.sender, address(this), _amount);
+            wUST.safeTransferFrom(super._msgSender(), address(this), _amount);
             wUST.burn(_amount, terraAddress);
 
             emit InitDeposit(_operator, _amount, terraAddress);
@@ -169,7 +163,7 @@ contract Operation is Ownable, IOperation, Initializable {
             currentStatus.input = address(aUST);
             currentStatus.output = address(wUST);
 
-            aUST.safeTransferFrom(msg.sender, address(this), _amount);
+            aUST.safeTransferFrom(super._msgSender(), address(this), _amount);
             aUST.burn(_amount, terraAddress);
 
             emit InitRedemption(_operator, _amount, terraAddress);
@@ -188,7 +182,7 @@ contract Operation is Ownable, IOperation, Initializable {
         address _swapper,
         address _swapDest,
         bool _autoFinish
-    ) public override onlyController {
+    ) public override onlyOperator {
         _init(
             Type.DEPOSIT,
             _operator,
@@ -205,7 +199,7 @@ contract Operation is Ownable, IOperation, Initializable {
         address _swapper,
         address _swapDest,
         bool _autoFinish
-    ) public override onlyController {
+    ) public override onlyOperator {
         _init(
             Type.REDEEM,
             _operator,
@@ -259,23 +253,23 @@ contract Operation is Ownable, IOperation, Initializable {
         return (address(output), amount);
     }
 
-    function finish() public override onlyController {
+    function finish() public override onlyOperator {
         _finish();
     }
 
-    function finishDepositStable() public override onlyController {
+    function finishDepositStable() public override onlyOperator {
         _finish();
     }
 
-    function finishRedeemStable() public override onlyController {
+    function finishRedeemStable() public override onlyOperator {
         _finish();
     }
 
-    function halt() public override onlyController {
+    function halt() public override onlyOperator {
         currentStatus.status = Status.STOPPED;
     }
 
-    function recover() public override onlyController {
+    function recover() public override onlyOperator {
         if (currentStatus.operator == address(0x0)) {
             currentStatus.status = Status.IDLE;
         } else {
@@ -286,7 +280,7 @@ contract Operation is Ownable, IOperation, Initializable {
     function emergencyWithdraw(address _token, address _to)
         public
         override
-        onlyController
+        onlyOperator
     {
         require(
             currentStatus.status == Status.STOPPED,
