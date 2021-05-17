@@ -10,6 +10,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
 import {WrappedAsset} from "../assets/WrappedAsset.sol";
 import {Operator} from "../utils/Operator.sol";
+import {OperationACL} from "./OperationACL.sol";
 import {ISwapper} from "../swapper/ISwapper.sol";
 
 interface IOperation {
@@ -72,7 +73,7 @@ interface IOperation {
 }
 
 // Operation.sol: subcontract generated per wallet, defining all relevant wrapping functions
-contract Operation is Context, Operator, IOperation, Initializable {
+contract Operation is Context, OperationACL, IOperation, Initializable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using SafeERC20 for WrappedAsset;
@@ -97,26 +98,28 @@ contract Operation is Context, Operator, IOperation, Initializable {
 
     function initialize(bytes memory args) public initializer {
         (
+            address _router,
             address _controller,
             bytes32 _terraAddress,
             address _wUST,
             address _aUST
-        ) = abi.decode(args, (address, bytes32, address, address));
+        ) = abi.decode(args, (address, address, bytes32, address, address));
 
         currentStatus = DEFAULT_STATUS;
         terraAddress = _terraAddress;
         wUST = WrappedAsset(_wUST);
         aUST = WrappedAsset(_aUST);
 
-        super.transferOperator(_controller);
+        super.transferRouter(_router);
+        super.transferController(_controller);
     }
 
-    function initPayload(address _controller, bytes32 _terraAddress)
-        public
-        view
-        returns (bytes memory)
-    {
-        return abi.encode(_controller, _terraAddress, wUST, aUST);
+    function initPayload(
+        address _router,
+        address _controller,
+        bytes32 _terraAddress
+    ) public view returns (bytes memory) {
+        return abi.encode(_router, _controller, _terraAddress, wUST, aUST);
     }
 
     modifier checkStopped {
@@ -136,7 +139,7 @@ contract Operation is Context, Operator, IOperation, Initializable {
         address _swapper,
         address _swapDest,
         bool _autoFinish
-    ) private checkStopped {
+    ) private onlyRouter checkStopped {
         require(currentStatus.status == Status.IDLE, "Operation: running");
         require(_amount >= 10 ether, "Operation: amount must be more than 10");
 
@@ -182,7 +185,7 @@ contract Operation is Context, Operator, IOperation, Initializable {
         address _swapper,
         address _swapDest,
         bool _autoFinish
-    ) public override onlyOperator {
+    ) public override {
         _init(
             Type.DEPOSIT,
             _operator,
@@ -199,7 +202,7 @@ contract Operation is Context, Operator, IOperation, Initializable {
         address _swapper,
         address _swapDest,
         bool _autoFinish
-    ) public override onlyOperator {
+    ) public override {
         _init(
             Type.REDEEM,
             _operator,
@@ -210,7 +213,12 @@ contract Operation is Context, Operator, IOperation, Initializable {
         );
     }
 
-    function _finish() private checkStopped returns (address, uint256) {
+    function _finish()
+        private
+        onlyGranted
+        checkStopped
+        returns (address, uint256)
+    {
         // check status
         require(currentStatus.status == Status.RUNNING, "Operation: idle");
 
@@ -253,23 +261,23 @@ contract Operation is Context, Operator, IOperation, Initializable {
         return (address(output), amount);
     }
 
-    function finish() public override onlyOperator {
+    function finish() public override {
         _finish();
     }
 
-    function finishDepositStable() public override onlyOperator {
+    function finishDepositStable() public override {
         _finish();
     }
 
-    function finishRedeemStable() public override onlyOperator {
+    function finishRedeemStable() public override {
         _finish();
     }
 
-    function halt() public override onlyOperator {
+    function halt() public override onlyController {
         currentStatus.status = Status.STOPPED;
     }
 
-    function recover() public override onlyOperator {
+    function recover() public override onlyController {
         if (currentStatus.operator == address(0x0)) {
             currentStatus.status = Status.IDLE;
         } else {
@@ -280,7 +288,7 @@ contract Operation is Context, Operator, IOperation, Initializable {
     function emergencyWithdraw(address _token, address _to)
         public
         override
-        onlyOperator
+        onlyController
     {
         require(
             currentStatus.status == Status.STOPPED,

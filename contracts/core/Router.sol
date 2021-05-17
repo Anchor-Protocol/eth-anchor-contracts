@@ -128,14 +128,16 @@ contract Router is
     ) internal {
         IOperationStore store = IOperationStore(optStore);
         if (store.getAvailableOperation() == address(0x0)) {
-            // deploy new one
-            address instance =
-                IOperationFactory(factory).build(optStdId, address(this));
+            address instance = IOperationFactory(factory).build(optStdId);
             store.allocate(instance);
-            IERC20(wUST).safeApprove(instance, type(uint256).max);
-            IERC20(aUST).safeApprove(instance, type(uint256).max);
         }
         IOperation operation = IOperation(store.init(_autoFinish));
+
+        // check allowance
+        if (IERC20(wUST).allowance(address(this), address(operation)) == 0) {
+            IERC20(wUST).safeApprove(address(operation), type(uint256).max);
+            IERC20(aUST).safeApprove(address(operation), type(uint256).max);
+        }
 
         if (_typ == IOperation.Type.DEPOSIT) {
             IERC20(wUST).safeTransferFrom(

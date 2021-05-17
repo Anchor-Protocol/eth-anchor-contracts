@@ -5,8 +5,8 @@ pragma experimental ABIEncoderV2;
 import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import {StdQueue} from "../utils/Queue.sol";
-import {Operator} from "../utils/Operator.sol";
 import {IOperation} from "./Operation.sol";
+import {OperationACL} from "./OperationACL.sol";
 
 interface IOperationStore {
     // Events
@@ -85,7 +85,7 @@ interface IOperationStore {
     function flushAll(uint256 _amount) external;
 }
 
-contract OperationStore is IOperationStore, Operator {
+contract OperationStore is IOperationStore, OperationACL {
     using StdQueue for StdQueue.AddressQueue;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -144,7 +144,7 @@ contract OperationStore is IOperationStore, Operator {
     // lifecycle
 
     // x -> init
-    function allocate(address _opt) public override onlyGranted {
+    function allocate(address _opt) public override onlyController {
         optIdle.add(_opt);
         optStat[_opt] = Status.IDLE;
         emit OperationAllocated(msg.sender, _opt);
@@ -158,7 +158,7 @@ contract OperationStore is IOperationStore, Operator {
     function init(bool _autoFinish)
         public
         override
-        onlyGranted
+        onlyRouter
         returns (address)
     {
         // consume
@@ -178,7 +178,7 @@ contract OperationStore is IOperationStore, Operator {
 
     // =========================== RUNNING QUEUE OPERATIONS =========================== //
 
-    function finish(address _opt) public override onlyGranted {
+    function finish(address _opt) public override onlyRouter {
         Status status = optStat[_opt];
 
         if (status == Status.RUNNING_MANUAL) {
@@ -195,7 +195,7 @@ contract OperationStore is IOperationStore, Operator {
 
     // fail -> recover -> idle
     //      -> truncate -> x
-    function halt(address _opt) public override onlyGranted {
+    function halt(address _opt) public override onlyController {
         Status stat = optStat[_opt];
         if (stat == Status.IDLE) {
             // push to failed queue
@@ -234,12 +234,12 @@ contract OperationStore is IOperationStore, Operator {
 
     // =========================== FAIL QUEUE OPERATIONS =========================== //
 
-    function recover(address _opt) public override onlyGranted {
+    function recover(address _opt) public override onlyController {
         optStat[_opt] = Status.RECOVERED;
         emit OperationRecovered(msg.sender, _opt);
     }
 
-    function deallocate(address _opt) public override onlyOwner {
+    function deallocate(address _opt) public override onlyController {
         optStat[_opt] = Status.DEALLOCATED;
         emit OperationDeallocated(msg.sender, _opt);
     }
@@ -280,7 +280,11 @@ contract OperationStore is IOperationStore, Operator {
         }
     }
 
-    function flush(Queue _queue, uint256 _amount) public override onlyGranted {
+    function flush(Queue _queue, uint256 _amount)
+        public
+        override
+        onlyController
+    {
         if (_queue == Queue.RUNNING) {
             _flush(optRunning, _amount, flushRunningQueue);
         } else if (_queue == Queue.STOPPED) {
@@ -290,7 +294,7 @@ contract OperationStore is IOperationStore, Operator {
         }
     }
 
-    function flushAll(uint256 _amount) public override onlyGranted {
+    function flushAll(uint256 _amount) public override onlyController {
         flush(Queue.RUNNING, _amount);
         flush(Queue.STOPPED, _amount);
     }

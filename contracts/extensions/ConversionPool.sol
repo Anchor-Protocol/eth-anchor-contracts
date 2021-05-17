@@ -105,7 +105,13 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
 
     // operations
 
-    function deposit(uint256 _amount) public override {
+    modifier _updateExchangeRate {
+        feeder.update(address(inputToken));
+
+        _;
+    }
+
+    function deposit(uint256 _amount) public override _updateExchangeRate {
         inputToken.safeTransferFrom(super._msgSender(), address(this), _amount);
 
         // swap to UST
@@ -124,7 +130,7 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
         outputToken.mint(super._msgSender(), ust.mul(1e18).div(pER));
     }
 
-    function redeem(uint256 _amount) public override {
+    function redeem(uint256 _amount) public override _updateExchangeRate {
         outputToken.burnFrom(super._msgSender(), _amount);
 
         uint256 pER = feeder.exchangeRateOf(address(inputToken));

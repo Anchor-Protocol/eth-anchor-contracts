@@ -12,6 +12,8 @@ import {IOperationStore} from "../operations/OperationStore.sol";
 import {IOperationFactory} from "../operations/OperationFactory.sol";
 
 interface IController {
+    function finish(address _opt) external;
+
     function allocate(uint256 _amount) external;
 
     function flush(uint256 _amount) external;
@@ -33,7 +35,7 @@ contract Controller is IController, Context, Operator {
     address public optStore;
     address public optFactory;
 
-    function _finish(address _opt) internal {
+    function finish(address _opt) public override onlyGranted {
         IOperationStore.Status status =
             IOperationStore(optStore).getStatusOf(_opt);
 
@@ -49,12 +51,8 @@ contract Controller is IController, Context, Operator {
 
     function allocate(uint256 _amount) public override onlyGranted {
         for (uint256 i = 0; i < _amount; i++) {
-            // deploy new one
-            address instance =
-                IOperationFactory(optFactory).build(optStdId, address(this));
+            address instance = IOperationFactory(optFactory).build(optStdId);
             IOperationStore(optStore).allocate(instance);
-            IERC20(wUST).safeApprove(instance, type(uint256).max);
-            IERC20(aUST).safeApprove(instance, type(uint256).max);
         }
     }
 
