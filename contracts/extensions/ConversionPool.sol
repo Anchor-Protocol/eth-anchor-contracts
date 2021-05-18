@@ -44,6 +44,10 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
     address public optRouter;
     IExchangeRateFeeder public feeder;
 
+    // flags
+    bool public isDepositAllowed = true;
+    bool public isRedemptionAllowed = true;
+
     function initialize(
         // ===== tokens
         string memory _outputTokenName,
@@ -87,6 +91,14 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
         feeder = IExchangeRateFeeder(_exchangeRateFeeder);
     }
 
+    function setDepositAllowance(bool _allow) public onlyOwner {
+        isDepositAllowed = _allow;
+    }
+
+    function setRedemptionAllowance(bool _allow) public onlyOwner {
+        isRedemptionAllowed = _allow;
+    }
+
     // reserve
 
     function provideReserve(uint256 _amount) public onlyGranted {
@@ -112,6 +124,8 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
     }
 
     function deposit(uint256 _amount) public override _updateExchangeRate {
+        require(isDepositAllowed, "ConversionPool: deposit not stopped");
+
         inputToken.safeTransferFrom(super._msgSender(), address(this), _amount);
 
         // swap to UST
@@ -131,6 +145,8 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
     }
 
     function redeem(uint256 _amount) public override _updateExchangeRate {
+        require(isRedemptionAllowed, "ConversionPool: redemption not allowed");
+
         outputToken.burnFrom(super._msgSender(), _amount);
 
         uint256 pER = feeder.exchangeRateOf(address(inputToken));

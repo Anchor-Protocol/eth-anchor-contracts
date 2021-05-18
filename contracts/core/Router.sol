@@ -94,28 +94,48 @@ contract Router is
     // operation
     address public optStore;
     uint256 public optStdId;
-    address public factory;
+    address public optFactory;
 
     // constant
     address public wUST;
     address public aUST;
 
+    // flags
+    bool public isDepositAllowed = true;
+    bool public isRedemptionAllowed = true;
+
     function initialize(
         address _optStore,
         uint256 _optStdId,
+        address _optFactory,
         address _wUST,
-        address _aUST,
-        address _factory
+        address _aUST
     ) public initializer {
         optStore = _optStore;
         optStdId = _optStdId;
-        factory = _factory;
+        optFactory = _optFactory;
         wUST = _wUST;
         aUST = _aUST;
     }
 
+    function setOperationStore(address _store) public onlyOwner {
+        optStore = _store;
+    }
+
     function setOperationId(uint256 _optStdId) public onlyOwner {
         optStdId = _optStdId;
+    }
+
+    function setOperationFactory(address _factory) public onlyOwner {
+        optFactory = _factory;
+    }
+
+    function setDepositAllowance(bool _allow) public onlyOwner {
+        isDepositAllowed = _allow;
+    }
+
+    function setRedemptionAllowance(bool _allow) public onlyOwner {
+        isRedemptionAllowed = _allow;
     }
 
     function _init(
@@ -128,7 +148,7 @@ contract Router is
     ) internal {
         IOperationStore store = IOperationStore(optStore);
         if (store.getAvailableOperation() == address(0x0)) {
-            address instance = IOperationFactory(factory).build(optStdId);
+            address instance = IOperationFactory(optFactory).build(optStdId);
             store.allocate(instance);
         }
         IOperation operation = IOperation(store.init(_autoFinish));
