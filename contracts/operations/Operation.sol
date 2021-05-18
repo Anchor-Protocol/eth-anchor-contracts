@@ -240,13 +240,14 @@ contract Operation is Context, OperationACL, IOperation, Initializable {
                     operator
                 )
             {} catch {
+                output.safeDecreaseAllowance(swapper, amount);
                 output.safeTransfer(operator, amount);
             }
         } else {
             output.safeTransfer(operator, amount);
         }
 
-        // prevent multiple reference
+        // state reference gas optimization
         Type typ = currentStatus.typ;
 
         if (typ == Type.DEPOSIT) {
