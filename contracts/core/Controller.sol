@@ -27,6 +27,8 @@ interface IController {
         address _to
     ) external;
 
+    function emergencyWithdraw(address _opt, address payable _to) external;
+
     function recover(address _opt, bool _runFinish) external;
 }
 
@@ -83,6 +85,14 @@ contract Controller is IController, Context, Operator, Initializable {
         address _to
     ) public override onlyOwner {
         IOperation(_opt).emergencyWithdraw(_token, _to);
+    }
+
+    function emergencyWithdraw(address _opt, address payable _to)
+        public
+        override
+        onlyOwner
+    {
+        IOperation(_opt).emergencyWithdraw(_to);
     }
 
     function recover(address _opt, bool _runFinish)

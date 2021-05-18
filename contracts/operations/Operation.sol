@@ -70,6 +70,8 @@ interface IOperation {
     function recover() external;
 
     function emergencyWithdraw(address _token, address _to) external;
+
+    function emergencyWithdraw(address payable _to) external;
 }
 
 // Operation.sol: subcontract generated per wallet, defining all relevant wrapping functions
@@ -307,5 +309,18 @@ contract Operation is Context, OperationACL, IOperation, Initializable {
             _to,
             IERC20(_token).balanceOf(address(this))
         );
+    }
+
+    function emergencyWithdraw(address payable _to)
+        public
+        override
+        onlyController
+    {
+        require(
+            currentStatus.status == Status.STOPPED,
+            "Operation: not an emergency"
+        );
+
+        _to.transfer(address(this).balance);
     }
 }
