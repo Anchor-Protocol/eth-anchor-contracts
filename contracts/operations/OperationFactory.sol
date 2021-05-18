@@ -42,19 +42,22 @@ contract OperationFactory is IOperationFactory, Operator {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     // standard operations
+    uint256 public standardIndex = 0;
     mapping(uint256 => Standard) public standards;
 
-    function setStandardOperation(
-        uint256 _optId,
+    function pushStandardOperation(
         address _router,
         address _controller,
         address _operation
-    ) public onlyOwner {
-        standards[_optId] = Standard({
+    ) public onlyOwner returns (uint256) {
+        uint256 optStdId = standardIndex;
+        standards[optStdId] = Standard({
             router: _router,
             controller: _controller,
             operation: _operation
         });
+        standardIndex += 1;
+        return optStdId;
     }
 
     // terra address buffer
