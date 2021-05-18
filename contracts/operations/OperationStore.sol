@@ -80,9 +80,10 @@ interface IOperationStore {
 
     function deallocate(address _opt) external;
 
+    // queue
     function flush(Queue queue, uint256 _amount) external;
 
-    function flushAll(uint256 _amount) external;
+    function flushAll(uint256 _amount) external; // running, failed
 }
 
 contract OperationStore is IOperationStore, OperationACL {
@@ -178,7 +179,7 @@ contract OperationStore is IOperationStore, OperationACL {
 
     // =========================== RUNNING QUEUE OPERATIONS =========================== //
 
-    function finish(address _opt) public override onlyRouter {
+    function finish(address _opt) public override onlyGranted {
         Status status = optStat[_opt];
 
         if (status == Status.RUNNING_MANUAL) {
@@ -194,17 +195,15 @@ contract OperationStore is IOperationStore, OperationACL {
     }
 
     // fail -> recover -> idle
-    //      -> truncate -> x
+    //      -> deallocate -> x
     function halt(address _opt) public override onlyController {
         Status stat = optStat[_opt];
         if (stat == Status.IDLE) {
             // push to failed queue
             optIdle.remove(_opt);
             optStopped.produce(_opt);
-        } else {
-            // wait for flush
-            optStat[_opt] = Status.STOPPED;
         }
+        optStat[_opt] = Status.STOPPED;
         emit OperationStopped(msg.sender, _opt);
     }
 
@@ -227,7 +226,7 @@ contract OperationStore is IOperationStore, OperationACL {
                 Queue.STOPPED
             );
         } else {
-            return false;
+            return false; // RUNNING
         }
         return true;
     }
@@ -258,7 +257,7 @@ contract OperationStore is IOperationStore, OperationACL {
             _queue.consume();
             emit OperationFlushed(msg.sender, opt, Queue.STOPPED, Queue.NULL);
         } else {
-            return false;
+            return false; // STOPPED
         }
 
         return true;
