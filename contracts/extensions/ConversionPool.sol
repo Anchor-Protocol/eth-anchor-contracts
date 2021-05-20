@@ -99,6 +99,19 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
         isRedemptionAllowed = _allow;
     }
 
+    // migrate
+    function migrate(address _to) public onlyOwner {
+        require(
+            !(isDepositAllowed && isRedemptionAllowed),
+            "ConversionPool: invalid status"
+        );
+
+        proxyOutputToken.transfer(
+            _to,
+            proxyOutputToken.balanceOf(address(this))
+        );
+    }
+
     // reserve
 
     function provideReserve(uint256 _amount) public onlyGranted {
