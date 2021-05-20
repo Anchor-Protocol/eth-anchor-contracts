@@ -21,6 +21,8 @@ import {UniswapV2Library} from "../libraries/UniswapV2Library.sol";
 interface IConversionPool {
     function deposit(uint256 _amount) external;
 
+    function deposit(uint256 _amount, uint256 _minAmountOut) external;
+
     function redeem(uint256 _amount) external;
 }
 
@@ -136,7 +138,15 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
         _;
     }
 
-    function deposit(uint256 _amount) public override _updateExchangeRate {
+    function deposit(uint256 _amount) public override {
+        deposit(_amount, 0);
+    }
+
+    function deposit(uint256 _amount, uint256 _minAmountOut)
+        public
+        override
+        _updateExchangeRate
+    {
         require(isDepositAllowed, "ConversionPool: deposit not stopped");
 
         inputToken.safeTransferFrom(super._msgSender(), address(this), _amount);
@@ -146,6 +156,7 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
             address(inputToken),
             address(proxyInputToken),
             _amount,
+            _minAmountOut,
             address(this)
         );
 

@@ -61,6 +61,8 @@ interface IOperation {
 
     function finish() external;
 
+    function finish(uint256 _minAmountOut) external;
+
     function finishDepositStable() external;
 
     function finishRedeemStable() external;
@@ -215,7 +217,7 @@ contract Operation is Context, OperationACL, IOperation, Initializable {
         );
     }
 
-    function _finish()
+    function _finish(uint256 _minAmountOut)
         private
         onlyGranted
         checkStopped
@@ -239,6 +241,7 @@ contract Operation is Context, OperationACL, IOperation, Initializable {
                     address(output),
                     currentStatus.swapDest,
                     amount,
+                    _minAmountOut,
                     operator
                 )
             {} catch {
@@ -265,15 +268,19 @@ contract Operation is Context, OperationACL, IOperation, Initializable {
     }
 
     function finish() public override {
-        _finish();
+        _finish(0);
+    }
+
+    function finish(uint256 _minAmountOut) public override {
+        _finish(_minAmountOut);
     }
 
     function finishDepositStable() public override {
-        _finish();
+        _finish(0);
     }
 
     function finishRedeemStable() public override {
-        _finish();
+        _finish(0);
     }
 
     function halt() public override onlyController {
