@@ -4,6 +4,7 @@ pragma solidity >=0.6.0 <0.8.0;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
 import {
@@ -11,7 +12,7 @@ import {
 } from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
 import {IExchangeRateFeeder} from "./ExchangeRateFeeder.sol";
-import {IRouter} from "../core/Router.sol";
+import {IRouter, IConversionRouter} from "../core/Router.sol";
 import {Operator} from "../utils/Operator.sol";
 import {ISwapper} from "../swapper/ISwapper.sol";
 import {IERC20Controlled, ERC20Controlled} from "../utils/ERC20Controlled.sol";
@@ -20,10 +21,12 @@ import {UniswapV2Library} from "../libraries/UniswapV2Library.sol";
 interface IConversionPool {
     function deposit(uint256 _amount) external;
 
+    function deposit(uint256 _amount, uint256 _minAmountOut) external;
+
     function redeem(uint256 _amount) external;
 }
 
-contract ConversionPool is IConversionPool, Operator, Initializable {
+contract ConversionPool is IConversionPool, Context, Operator, Initializable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using SafeERC20 for IERC20Controlled;
@@ -40,8 +43,12 @@ contract ConversionPool is IConversionPool, Operator, Initializable {
     IERC20 public proxyOutputToken; // aUST
     uint256 public proxyReserve = 0; // aUST reserve
 
-    IRouter public optRouter;
+    address public optRouter;
     IExchangeRateFeeder public feeder;
+
+    // flags
+    bool public isDepositAllowed = true;
+    bool public isRedemptionAllowed = true;
 
     function initialize(
         // ===== tokens
@@ -74,9 +81,9 @@ contract ConversionPool is IConversionPool, Operator, Initializable {
     }
 
     function setOperationRouter(address _optRouter) public onlyOwner {
-        optRouter = IRouter(_optRouter);
-        proxyInputToken.safeApprove(address(optRouter), type(uint256).max);
-        proxyOutputToken.safeApprove(address(optRouter), type(uint256).max);
+        optRouter = _optRouter;
+        proxyInputToken.safeApprove(optRouter, type(uint256).max);
+        proxyOutputToken.safeApprove(optRouter, type(uint256).max);
     }
 
     function setExchangeRateFeeder(address _exchangeRateFeeder)
@@ -86,48 +93,92 @@ contract ConversionPool is IConversionPool, Operator, Initializable {
         feeder = IExchangeRateFeeder(_exchangeRateFeeder);
     }
 
+    function setDepositAllowance(bool _allow) public onlyOwner {
+        isDepositAllowed = _allow;
+    }
+
+    function setRedemptionAllowance(bool _allow) public onlyOwner {
+        isRedemptionAllowed = _allow;
+    }
+
+    // migrate
+    function migrate(address _to) public onlyOwner {
+        require(
+            !(isDepositAllowed && isRedemptionAllowed),
+            "ConversionPool: invalid status"
+        );
+
+        proxyOutputToken.transfer(
+            _to,
+            proxyOutputToken.balanceOf(address(this))
+        );
+    }
+
     // reserve
 
     function provideReserve(uint256 _amount) public onlyGranted {
         proxyReserve = proxyReserve.add(_amount);
-        proxyOutputToken.safeTransferFrom(msg.sender, address(this), _amount);
+        proxyOutputToken.safeTransferFrom(
+            super._msgSender(),
+            address(this),
+            _amount
+        );
     }
 
     function removeReserve(uint256 _amount) public onlyGranted {
         proxyReserve = proxyReserve.sub(_amount);
-        proxyOutputToken.safeTransfer(msg.sender, _amount);
+        proxyOutputToken.safeTransfer(super._msgSender(), _amount);
     }
 
     // operations
 
+    modifier _updateExchangeRate {
+        feeder.update(address(inputToken));
+
+        _;
+    }
+
     function deposit(uint256 _amount) public override {
-        inputToken.safeTransferFrom(msg.sender, address(this), _amount);
+        deposit(_amount, 0);
+    }
+
+    function deposit(uint256 _amount, uint256 _minAmountOut)
+        public
+        override
+        _updateExchangeRate
+    {
+        require(isDepositAllowed, "ConversionPool: deposit not stopped");
+
+        inputToken.safeTransferFrom(super._msgSender(), address(this), _amount);
 
         // swap to UST
         swapper.swapToken(
             address(inputToken),
             address(proxyInputToken),
             _amount,
+            _minAmountOut,
             address(this)
         );
 
         // depositStable
         uint256 ust = proxyInputToken.balanceOf(address(this));
-        optRouter.depositStable(ust);
+        IRouter(optRouter).depositStable(ust);
 
         uint256 pER = feeder.exchangeRateOf(address(inputToken));
-        outputToken.mint(msg.sender, ust.mul(1e18).div(pER));
+        outputToken.mint(super._msgSender(), ust.mul(1e18).div(pER));
     }
 
-    function redeem(uint256 _amount) public override {
-        outputToken.burnFrom(msg.sender, _amount);
+    function redeem(uint256 _amount) public override _updateExchangeRate {
+        require(isRedemptionAllowed, "ConversionPool: redemption not allowed");
+
+        outputToken.burnFrom(super._msgSender(), _amount);
 
         uint256 pER = feeder.exchangeRateOf(address(inputToken));
         uint256 out = _amount.mul(pER).div(1e18);
 
         uint256 aER = feeder.exchangeRateOf(address(proxyInputToken));
-        optRouter.redeemStable(
-            msg.sender,
+        IConversionRouter(optRouter).redeemStable(
+            super._msgSender(),
             out.mul(1e18).div(aER),
             address(swapper),
             address(inputToken)

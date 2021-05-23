@@ -2,13 +2,15 @@
 pragma solidity >=0.6.0 <0.8.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
 import {WrappedAsset} from "../assets/WrappedAsset.sol";
+import {Operator} from "../utils/Operator.sol";
+import {OperationACL} from "./OperationACL.sol";
 import {ISwapper} from "../swapper/ISwapper.sol";
 
 interface IOperation {
@@ -36,7 +38,6 @@ interface IOperation {
     }
 
     // Interfaces
-    function controller() external view returns (address);
 
     function terraAddress() external view returns (bytes32);
 
@@ -60,6 +61,8 @@ interface IOperation {
 
     function finish() external;
 
+    function finish(uint256 _minAmountOut) external;
+
     function finishDepositStable() external;
 
     function finishRedeemStable() external;
@@ -69,10 +72,12 @@ interface IOperation {
     function recover() external;
 
     function emergencyWithdraw(address _token, address _to) external;
+
+    function emergencyWithdraw(address payable _to) external;
 }
 
 // Operation.sol: subcontract generated per wallet, defining all relevant wrapping functions
-contract Operation is Ownable, IOperation, Initializable {
+contract Operation is Context, OperationACL, IOperation, Initializable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using SafeERC20 for WrappedAsset;
@@ -93,36 +98,32 @@ contract Operation is Ownable, IOperation, Initializable {
     WrappedAsset public wUST;
     WrappedAsset public aUST;
 
-    address public override controller;
     bytes32 public override terraAddress;
 
     function initialize(bytes memory args) public initializer {
         (
+            address _router,
             address _controller,
             bytes32 _terraAddress,
             address _wUST,
             address _aUST
-        ) = abi.decode(args, (address, bytes32, address, address));
+        ) = abi.decode(args, (address, address, bytes32, address, address));
 
         currentStatus = DEFAULT_STATUS;
-        controller = _controller;
         terraAddress = _terraAddress;
         wUST = WrappedAsset(_wUST);
         aUST = WrappedAsset(_aUST);
+
+        super.transferRouter(_router);
+        super.transferController(_controller);
     }
 
-    function initPayload(address _controller, bytes32 _terraAddress)
-        public
-        view
-        returns (bytes memory)
-    {
-        return abi.encode(_controller, _terraAddress, wUST, aUST);
-    }
-
-    modifier onlyController {
-        require(controller == msg.sender, "Operation: not allowed");
-
-        _;
+    function initPayload(
+        address _router,
+        address _controller,
+        bytes32 _terraAddress
+    ) public view returns (bytes memory) {
+        return abi.encode(_router, _controller, _terraAddress, wUST, aUST);
     }
 
     modifier checkStopped {
@@ -142,7 +143,7 @@ contract Operation is Ownable, IOperation, Initializable {
         address _swapper,
         address _swapDest,
         bool _autoFinish
-    ) private checkStopped {
+    ) private onlyRouter checkStopped {
         require(currentStatus.status == Status.IDLE, "Operation: running");
         require(_amount >= 10 ether, "Operation: amount must be more than 10");
 
@@ -161,7 +162,7 @@ contract Operation is Ownable, IOperation, Initializable {
             currentStatus.input = address(wUST);
             currentStatus.output = address(aUST);
 
-            wUST.safeTransferFrom(msg.sender, address(this), _amount);
+            wUST.safeTransferFrom(super._msgSender(), address(this), _amount);
             wUST.burn(_amount, terraAddress);
 
             emit InitDeposit(_operator, _amount, terraAddress);
@@ -169,7 +170,7 @@ contract Operation is Ownable, IOperation, Initializable {
             currentStatus.input = address(aUST);
             currentStatus.output = address(wUST);
 
-            aUST.safeTransferFrom(msg.sender, address(this), _amount);
+            aUST.safeTransferFrom(super._msgSender(), address(this), _amount);
             aUST.burn(_amount, terraAddress);
 
             emit InitRedemption(_operator, _amount, terraAddress);
@@ -188,7 +189,7 @@ contract Operation is Ownable, IOperation, Initializable {
         address _swapper,
         address _swapDest,
         bool _autoFinish
-    ) public override onlyController {
+    ) public override {
         _init(
             Type.DEPOSIT,
             _operator,
@@ -205,7 +206,7 @@ contract Operation is Ownable, IOperation, Initializable {
         address _swapper,
         address _swapDest,
         bool _autoFinish
-    ) public override onlyController {
+    ) public override {
         _init(
             Type.REDEEM,
             _operator,
@@ -216,7 +217,12 @@ contract Operation is Ownable, IOperation, Initializable {
         );
     }
 
-    function _finish() private checkStopped returns (address, uint256) {
+    function _finish(uint256 _minAmountOut)
+        private
+        onlyGranted
+        checkStopped
+        returns (address, uint256)
+    {
         // check status
         require(currentStatus.status == Status.RUNNING, "Operation: idle");
 
@@ -235,16 +241,18 @@ contract Operation is Ownable, IOperation, Initializable {
                     address(output),
                     currentStatus.swapDest,
                     amount,
+                    _minAmountOut,
                     operator
                 )
             {} catch {
+                output.safeDecreaseAllowance(swapper, amount);
                 output.safeTransfer(operator, amount);
             }
         } else {
             output.safeTransfer(operator, amount);
         }
 
-        // prevent multiple reference
+        // state reference gas optimization
         Type typ = currentStatus.typ;
 
         if (typ == Type.DEPOSIT) {
@@ -259,16 +267,20 @@ contract Operation is Ownable, IOperation, Initializable {
         return (address(output), amount);
     }
 
-    function finish() public override onlyController {
-        _finish();
+    function finish() public override {
+        _finish(0);
     }
 
-    function finishDepositStable() public override onlyController {
-        _finish();
+    function finish(uint256 _minAmountOut) public override {
+        _finish(_minAmountOut);
     }
 
-    function finishRedeemStable() public override onlyController {
-        _finish();
+    function finishDepositStable() public override {
+        _finish(0);
+    }
+
+    function finishRedeemStable() public override {
+        _finish(0);
     }
 
     function halt() public override onlyController {
@@ -304,5 +316,18 @@ contract Operation is Ownable, IOperation, Initializable {
             _to,
             IERC20(_token).balanceOf(address(this))
         );
+    }
+
+    function emergencyWithdraw(address payable _to)
+        public
+        override
+        onlyController
+    {
+        require(
+            currentStatus.status == Status.STOPPED,
+            "Operation: not an emergency"
+        );
+
+        _to.transfer(address(this).balance);
     }
 }

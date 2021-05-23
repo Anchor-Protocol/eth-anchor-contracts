@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
 import {StdQueue} from "../utils/Queue.sol";
@@ -33,20 +34,7 @@ interface IRouter {
 
     function depositStable(address _operator, uint256 _amount) external;
 
-    function depositStable(
-        address _operator,
-        uint256 _amount,
-        address _swapper,
-        address _swapDest
-    ) external;
-
     function initDepositStable(uint256 _amount) external;
-
-    function initDepositStable(
-        uint256 _amount,
-        address _swapper,
-        address _swapDest
-    ) external;
 
     function finishDepositStable(address _operation) external;
 
@@ -56,6 +44,29 @@ interface IRouter {
 
     function redeemStable(address _operator, uint256 _amount) external;
 
+    function initRedeemStable(uint256 _amount) external;
+
+    function finishRedeemStable(address _operation) external;
+}
+
+interface IConversionRouter {
+    // ======================= deposit stable ======================= //
+
+    function depositStable(
+        address _operator,
+        uint256 _amount,
+        address _swapper,
+        address _swapDest
+    ) external;
+
+    function initDepositStable(
+        uint256 _amount,
+        address _swapper,
+        address _swapDest
+    ) external;
+
+    // ======================= redeem stable ======================= //
+
     function redeemStable(
         address _operator,
         uint256 _amount,
@@ -63,58 +74,68 @@ interface IRouter {
         address _swapDest
     ) external;
 
-    function initRedeemStable(uint256 _amount) external;
-
     function initRedeemStable(
         uint256 _amount,
         address _swapper,
         address _swapDest
     ) external;
-
-    function finishRedeemStable(address _operation) external;
-
-    // ======================= limited access ======================= //
-
-    function allocate(uint256 _amount) external;
-
-    function flush(uint256 _amount) external;
-
-    function halt(address _opt) external;
-
-    function recover(address _opt, bool _runFinish) external;
-
-    function emergencyWithdraw(address _opt, address _token) external;
 }
 
-contract Router is IRouter, Operator, Initializable {
+contract Router is
+    IRouter,
+    IConversionRouter,
+    Context,
+    Operator,
+    Initializable
+{
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     // operation
     address public optStore;
     uint256 public optStdId;
-    address public factory;
+    address public optFactory;
 
     // constant
     address public wUST;
     address public aUST;
 
+    // flags
+    bool public isDepositAllowed = true;
+    bool public isRedemptionAllowed = true;
+
     function initialize(
         address _optStore,
         uint256 _optStdId,
+        address _optFactory,
         address _wUST,
-        address _aUST,
-        address _factory
+        address _aUST
     ) public initializer {
         optStore = _optStore;
         optStdId = _optStdId;
-        factory = _factory;
+        optFactory = _optFactory;
         wUST = _wUST;
         aUST = _aUST;
     }
 
+    function setOperationStore(address _store) public onlyOwner {
+        optStore = _store;
+    }
+
     function setOperationId(uint256 _optStdId) public onlyOwner {
         optStdId = _optStdId;
+    }
+
+    function setOperationFactory(address _factory) public onlyOwner {
+        optFactory = _factory;
+    }
+
+    function setDepositAllowance(bool _allow) public onlyOwner {
+        isDepositAllowed = _allow;
+    }
+
+    function setRedemptionAllowance(bool _allow) public onlyOwner {
+        isRedemptionAllowed = _allow;
     }
 
     function _init(
@@ -127,17 +148,23 @@ contract Router is IRouter, Operator, Initializable {
     ) internal {
         IOperationStore store = IOperationStore(optStore);
         if (store.getAvailableOperation() == address(0x0)) {
-            // deploy new one
-            address instance =
-                IOperationFactory(factory).build(optStdId, address(this));
+            address instance = IOperationFactory(optFactory).build(optStdId);
             store.allocate(instance);
-            IERC20(wUST).safeApprove(instance, type(uint256).max);
-            IERC20(aUST).safeApprove(instance, type(uint256).max);
         }
         IOperation operation = IOperation(store.init(_autoFinish));
 
+        // check allowance
+        if (IERC20(wUST).allowance(address(this), address(operation)) == 0) {
+            IERC20(wUST).safeApprove(address(operation), type(uint256).max);
+            IERC20(aUST).safeApprove(address(operation), type(uint256).max);
+        }
+
         if (_typ == IOperation.Type.DEPOSIT) {
-            IERC20(wUST).safeTransferFrom(msg.sender, address(this), _amount);
+            IERC20(wUST).safeTransferFrom(
+                super._msgSender(),
+                address(this),
+                _amount
+            );
             operation.initDepositStable(
                 _operator,
                 _amount,
@@ -149,7 +176,11 @@ contract Router is IRouter, Operator, Initializable {
         }
 
         if (_typ == IOperation.Type.REDEEM) {
-            IERC20(aUST).safeTransferFrom(msg.sender, address(this), _amount);
+            IERC20(aUST).safeTransferFrom(
+                super._msgSender(),
+                address(this),
+                _amount
+            );
             operation.initRedeemStable(
                 _operator,
                 _amount,
@@ -168,16 +199,10 @@ contract Router is IRouter, Operator, Initializable {
             IOperationStore(optStore).getStatusOf(_opt);
 
         if (status == IOperationStore.Status.RUNNING_MANUAL) {
-            // check msg.sender
+            // check sender
             require(
-                IOperation(_opt).getCurrentStatus().operator == msg.sender,
-                "Router: invalid sender"
-            );
-        } else if (status == IOperationStore.Status.RUNNING_AUTO) {
-            // check msg.sender || bot
-            require(
-                IOperation(_opt).getCurrentStatus().operator == msg.sender ||
-                    operator == msg.sender,
+                IOperation(_opt).getCurrentStatus().operator ==
+                    super._msgSender(),
                 "Router: invalid sender"
             );
         } else {
@@ -210,7 +235,7 @@ contract Router is IRouter, Operator, Initializable {
     function depositStable(uint256 _amount) public override {
         _init(
             IOperation.Type.DEPOSIT,
-            msg.sender,
+            super._msgSender(),
             _amount,
             address(0x0),
             address(0x0),
@@ -248,7 +273,7 @@ contract Router is IRouter, Operator, Initializable {
     function initDepositStable(uint256 _amount) public override {
         _init(
             IOperation.Type.DEPOSIT,
-            msg.sender,
+            super._msgSender(),
             _amount,
             address(0x0),
             address(0x0),
@@ -263,7 +288,7 @@ contract Router is IRouter, Operator, Initializable {
     ) public override {
         _init(
             IOperation.Type.DEPOSIT,
-            msg.sender,
+            super._msgSender(),
             _amount,
             _swapper,
             _swapDest,
@@ -280,7 +305,7 @@ contract Router is IRouter, Operator, Initializable {
     function redeemStable(uint256 _amount) public override {
         _init(
             IOperation.Type.REDEEM,
-            msg.sender,
+            super._msgSender(),
             _amount,
             address(0x0),
             address(0x0),
@@ -318,7 +343,7 @@ contract Router is IRouter, Operator, Initializable {
     function initRedeemStable(uint256 _amount) public override {
         _init(
             IOperation.Type.REDEEM,
-            msg.sender,
+            super._msgSender(),
             _amount,
             address(0x0),
             address(0x0),
@@ -333,7 +358,7 @@ contract Router is IRouter, Operator, Initializable {
     ) public override {
         _init(
             IOperation.Type.REDEEM,
-            msg.sender,
+            super._msgSender(),
             _amount,
             _swapper,
             _swapDest,
@@ -343,46 +368,5 @@ contract Router is IRouter, Operator, Initializable {
 
     function finishRedeemStable(address _operation) public override {
         _finish(_operation);
-    }
-
-    function allocate(uint256 _amount) public override onlyGranted {
-        for (uint256 i = 0; i < _amount; i++) {
-            // deploy new one
-            address instance =
-                IOperationFactory(factory).build(optStdId, address(this));
-            IOperationStore(optStore).allocate(instance);
-            IERC20(wUST).safeApprove(instance, type(uint256).max);
-            IERC20(aUST).safeApprove(instance, type(uint256).max);
-        }
-    }
-
-    function flush(uint256 _amount) public override onlyGranted {
-        IOperationStore(optStore).flushAll(_amount);
-    }
-
-    function halt(address _opt) public override onlyGranted {
-        IOperation(_opt).halt();
-        IOperationStore(optStore).halt(_opt);
-    }
-
-    function recover(address _opt, bool _runFinish)
-        public
-        override
-        onlyGranted
-    {
-        IOperation(_opt).recover();
-        IOperationStore(optStore).recover(_opt);
-
-        if (_runFinish) {
-            IOperation(_opt).finish();
-        }
-    }
-
-    function emergencyWithdraw(address _opt, address _token)
-        public
-        override
-        onlyOwner
-    {
-        IOperation(_opt).emergencyWithdraw(_token, msg.sender);
     }
 }

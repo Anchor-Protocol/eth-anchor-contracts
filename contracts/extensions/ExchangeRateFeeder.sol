@@ -47,8 +47,6 @@ contract ExchangeRateFeeder is IExchangeRateFeeder, Operator {
 
     mapping(address => Token) public tokens;
 
-    // 1.15 => 1000015954686906531
-
     function addToken(
         address _token,
         uint256 _baseRate,
@@ -101,9 +99,7 @@ contract ExchangeRateFeeder is IExchangeRateFeeder, Operator {
         for (uint256 i = 0; i < updateCount; i++) {
             token.exchangeRate = token.exchangeRate.mul(token.weight).div(1e18);
         }
-        token.lastUpdatedAt = token.lastUpdatedAt.add(
-            token.period.mul(updateCount)
-        );
+        token.lastUpdatedAt = token.lastUpdatedAt.add(block.timestamp);
 
         tokens[_token] = token;
 

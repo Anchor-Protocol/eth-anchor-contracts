@@ -53,6 +53,7 @@ contract UniswapSwapper is ISwapper, Ownable {
         address _from,
         address _to,
         uint256 _amount,
+        uint256 _minAmountOut,
         address _beneficiary
     ) public override {
         address[] memory path;
@@ -71,7 +72,7 @@ contract UniswapSwapper is ISwapper, Ownable {
         uint256[] memory amounts =
             UniswapV2Library.getAmountsOut(factory, _amount, path);
         require(
-            amounts[amounts.length - 1] >= 0,
+            amounts[amounts.length - 1] >= _minAmountOut,
             "UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT"
         );
         IERC20(path[0]).safeTransferFrom(
