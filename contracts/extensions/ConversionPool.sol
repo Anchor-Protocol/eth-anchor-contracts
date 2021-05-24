@@ -184,4 +184,6 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
             address(inputToken)
         );
     }
+
+    // TODO redeem(uint256 _amount, uint256 _minAmountOut)
 }
