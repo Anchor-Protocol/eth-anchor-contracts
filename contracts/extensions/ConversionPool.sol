@@ -24,6 +24,8 @@ interface IConversionPool {
     function deposit(uint256 _amount, uint256 _minAmountOut) external;
 
     function redeem(uint256 _amount) external;
+
+    function redeem(uint256 _amount, uint256 _minAmountOut) external;
 }
 
 contract ConversionPool is IConversionPool, Context, Operator, Initializable {
@@ -185,5 +187,7 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
         );
     }
 
-    // TODO redeem(uint256 _amount, uint256 _minAmountOut)
+    function redeem(uint256 _amount, uint256 _minAmountOut) public override {
+        redeem(_amount);
+    }
 }
