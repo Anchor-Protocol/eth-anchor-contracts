@@ -6,10 +6,10 @@ import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
 import {StdQueue} from "../utils/Queue.sol";
-import {Operator} from "../utils/Operator.sol";
 import {IOperation} from "../operations/Operation.sol";
 import {IOperationStore} from "../operations/OperationStore.sol";
 import {IOperationFactory} from "../operations/OperationFactory.sol";
@@ -81,13 +81,7 @@ interface IConversionRouter {
     ) external;
 }
 
-contract Router is
-    IRouter,
-    IConversionRouter,
-    Context,
-    Operator,
-    Initializable
-{
+contract Router is IRouter, IConversionRouter, Context, Ownable, Initializable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 

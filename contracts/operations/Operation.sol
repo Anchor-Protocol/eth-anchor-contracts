@@ -114,8 +114,8 @@ contract Operation is Context, OperationACL, IOperation, Initializable {
         wUST = WrappedAsset(_wUST);
         aUST = WrappedAsset(_aUST);
 
-        super.transferRouter(_router);
-        super.transferController(_controller);
+        router = _router;
+        controller = _controller;
     }
 
     function initPayload(

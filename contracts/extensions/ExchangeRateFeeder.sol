@@ -2,8 +2,7 @@
 pragma solidity >=0.6.0 <0.8.0;
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-
-import {Operator} from "../utils/Operator.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 interface IExchangeRateFeeder {
     event RateUpdated(
@@ -42,7 +41,7 @@ interface IExchangeRateFeederGov {
     function stopUpdate(address[] memory _tokens) external;
 }
 
-contract ExchangeRateFeeder is IExchangeRateFeeder, Operator {
+contract ExchangeRateFeeder is IExchangeRateFeeder, Ownable {
     using SafeMath for uint256;
 
     mapping(address => Token) public tokens;
@@ -84,7 +83,7 @@ contract ExchangeRateFeeder is IExchangeRateFeeder, Operator {
         return tokens[_token].exchangeRate;
     }
 
-    function update(address _token) public override onlyGranted {
+    function update(address _token) public override {
         Token memory token = tokens[_token];
 
         require(token.status == Status.RUNNING, "Feeder: invalid status");

@@ -145,7 +145,7 @@ contract OperationStore is IOperationStore, OperationACL {
     // lifecycle
 
     // x -> init
-    function allocate(address _opt) public override onlyController {
+    function allocate(address _opt) public override onlyGranted {
         optIdle.add(_opt);
         optStat[_opt] = Status.IDLE;
         emit OperationAllocated(msg.sender, _opt);

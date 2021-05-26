@@ -4,7 +4,7 @@ pragma solidity >=0.6.0 <0.8.0;
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
-import {Operator} from "../utils/Operator.sol";
+import {OperationACL} from "./OperationACL.sol";
 
 interface OperationStandard {
     function initialize(bytes memory) external;
@@ -38,7 +38,7 @@ interface IOperationFactory {
     function build(uint256 _optId) external returns (address);
 }
 
-contract OperationFactory is IOperationFactory, Operator {
+contract OperationFactory is IOperationFactory, OperationACL {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     // standard operations
