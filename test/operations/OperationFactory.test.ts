@@ -74,7 +74,7 @@ describe("OperationFactory", () => {
     await factory.connect(owner).pushTerraAddresses([hash2]);
     expect(await factory.fetchNextTerraAddress()).to.eq(hash2);
 
-    const tx = await factory.connect(controller).build(0, controller.address);
+    const tx = await factory.connect(controller).build(0);
     const receipt = await provider.getTransactionReceipt(tx.hash);
     const desc = factory.interface.parseLog(receipt.logs[0]);
 
