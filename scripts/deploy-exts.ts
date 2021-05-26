@@ -40,7 +40,9 @@ export async function deployExtension(
   let tx;
 
   if (!swapperAddr) {
-    tx = await swapper.connect(operator).setSwapFactory(ropsten.UniFactory);
+    tx = await swapper
+      .connect(operator)
+      .setSwapFactory(ropsten.UniFactory, { gasPrice });
     console.log(`waiting ${swapper.address} ${tx.hash}`);
     await provider.waitForTransaction(tx.hash, 2);
   }
@@ -51,8 +53,9 @@ export async function deployExtension(
       .addToken(
         ropsten.UST,
         constants.WeiPerEther,
-        86400,
-        BigNumber.from("1000020813179695551")
+        21600,
+        BigNumber.from("1000124885576180370"),
+        { gasPrice }
       );
     console.log(`waiting ${feeder.address} ${tx.hash}`);
     await provider.waitForTransaction(tx.hash, 2);
@@ -64,8 +67,8 @@ export async function deployExtension(
       .addToken(
         token.address,
         constants.WeiPerEther,
-        86400,
-        BigNumber.from("1000015954686906531"),
+        21600,
+        BigNumber.from("1000095731939800926"),
         { gasPrice }
       );
     console.log(`waiting ${feeder.address} ${tx.hash}`);

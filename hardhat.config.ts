@@ -9,6 +9,9 @@ export default {
   default: "hardhat",
   networks: {
     hardhat: {},
+    local: {
+      url: "http://localhost:8545",
+    },
     ...Networks,
   },
   solidity: {

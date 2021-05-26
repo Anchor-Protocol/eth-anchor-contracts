@@ -3,8 +3,11 @@
   "license": "MIT",
   "scripts": {
     "test": "hardhat test",
+    "testnode": "ganache-cli -m test test test test test test test test test test test test -b 0.5",
     "compile": "hardhat compile",
-    "coverage": "hardhat coverage"
+    "coverage": "hardhat coverage",
+    "deploy-core": "hardhat run ./scripts/deploy-core.ts",
+    "deploy-exts": "hardhat run ./scripts/deploy-exts.ts"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.1",
@@ -15,6 +18,7 @@
     "chai": "^4.2.0",
     "ethereum-waffle": "^3.2.1",
     "ethers": "^5.0.24",
+    "ganache-cli": "^6.12.2",
     "hardhat": "^2.0.5",
     "hardhat-gas-reporter": "^1.0.4",
     "solc": "0.7.6",
