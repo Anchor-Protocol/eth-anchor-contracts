@@ -49,7 +49,6 @@ describe("ExchangeRateFeeder", () => {
       "ExchangeRateFeeder"
     );
     feeder = await ExchangeRateFeeder.connect(owner).deploy();
-    await feeder.connect(owner).transferOperator(operator.address);
     await feeder
       .connect(owner)
       .addToken(
@@ -68,7 +67,7 @@ describe("ExchangeRateFeeder", () => {
       );
   });
 
-  it("controll", async () => {
+  it("control", async () => {
     let tx, block;
 
     tx = await feeder

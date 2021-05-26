@@ -1,31 +1,19 @@
-import chai, { expect } from "chai";
+import chai from "chai";
 import { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
-import {
-  Contract,
-  ContractFactory,
-  BigNumber,
-  utils,
-  BigNumberish,
-  constants,
-} from "ethers";
-import { Provider } from "@ethersproject/providers";
+import { Contract, ContractFactory, utils, constants } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
 import UniFactoryMeta from "@uniswap/v2-core/build/UniswapV2Factory.json";
 import UniRouterMeta from "@uniswap/v2-periphery/build/UniswapV2Router02.json";
 
-import {
-  advanceTimeAndBlock,
-  encodeParameters,
-  filterStructFields,
-  latestBlocktime,
-} from "../shared/utilities";
+import { latestBlocktime } from "../shared/utilities";
 import {
   HOUR_PERIOD,
   HOUR_YIELD_15,
   HOUR_YIELD_20,
 } from "../utils/TypeExchangeRateFeeder";
+import { deployCore } from "../shared/deploy-core";
 
 chai.use(solidity);
 
@@ -33,11 +21,8 @@ describe("ConversionPool", async () => {
   const { provider } = ethers;
 
   let owner: SignerWithAddress;
-  let operator: SignerWithAddress;
-
-  before("setup", async () => {
-    [owner, operator] = await ethers.getSigners();
-  });
+  let user: SignerWithAddress;
+  let bot: SignerWithAddress;
 
   // factories
   const UniFactory = new ContractFactory(
@@ -54,15 +39,16 @@ describe("ConversionPool", async () => {
   let uniRouter: Contract;
 
   // tokens
-  let ust: Contract;
-  let dai: Contract;
-  let aust: Contract;
-  let adai: Contract;
+  let wUST: Contract;
+  let aUST: Contract;
+  let DAI: Contract;
+  let aDAI: Contract;
 
   // core
   let store: Contract;
-  let router: Contract;
   let factory: Contract;
+  let router: Contract;
+  let controller: Contract;
 
   // exts
   let pool: Contract;
@@ -75,10 +61,14 @@ describe("ConversionPool", async () => {
   const LIQUIDITY = constants.WeiPerEther.mul(100000);
 
   beforeEach("deploy contracts", async () => {
+    ({
+      role: { owner, user, bot },
+      token: { wUST, aUST },
+      core: { store, factory, router, controller },
+    } = await deployCore());
+
     const TestAsset = await ethers.getContractFactory("TestAsset");
-    ust = await TestAsset.connect(owner).deploy();
-    dai = await TestAsset.connect(owner).deploy();
-    aust = await TestAsset.connect(owner).deploy();
+    DAI = await TestAsset.connect(owner).deploy();
 
     // uniswap
     uniFactory = await UniFactory.connect(owner).deploy(constants.AddressZero);
@@ -86,15 +76,15 @@ describe("ConversionPool", async () => {
       uniFactory.address,
       constants.AddressZero // no weth
     );
-    for await (const token of [ust, dai]) {
+    for await (const token of [wUST, DAI]) {
       await token.connect(owner).mint(owner.address, LIQUIDITY);
       await token.connect(owner).approve(uniRouter.address, LIQUIDITY);
     }
     await uniRouter
       .connect(owner)
       .addLiquidity(
-        ust.address,
-        dai.address,
+        wUST.address,
+        DAI.address,
         LIQUIDITY,
         LIQUIDITY,
         0,
@@ -102,34 +92,6 @@ describe("ConversionPool", async () => {
         owner.address,
         (await latestBlocktime(provider)) + 60
       );
-
-    // core
-    const Store = await ethers.getContractFactory("OperationStore");
-    const Router = await ethers.getContractFactory("Router");
-    const Factory = await ethers.getContractFactory("OperationFactory");
-
-    store = await Store.connect(owner).deploy();
-    router = await Router.connect(owner).deploy();
-    factory = await Factory.connect(owner).deploy();
-
-    await store.connect(owner).transferOperator(router.address);
-    await factory.connect(owner).transferOperator(router.address);
-    await router
-      .connect(owner)
-      .initialize(store.address, 0, ust.address, aust.address, factory.address);
-
-    // standard operation
-    const Operation = await ethers.getContractFactory("Operation");
-    const operation = await Operation.connect(owner).deploy();
-    await operation
-      .connect(owner)
-      .initialize(
-        encodeParameters(
-          ["address", "bytes32", "address", "address"],
-          [router.address, EMPTY_HASH, ust.address, aust.address]
-        )
-      );
-    await factory.connect(owner).setStandardOperation(0, operation.address);
 
     // extensions
     const Pool = await ethers.getContractFactory("ConversionPool");
@@ -142,10 +104,15 @@ describe("ConversionPool", async () => {
 
     await feeder
       .connect(owner)
-      .addToken(ust.address, constants.WeiPerEther, HOUR_PERIOD, HOUR_YIELD_20);
+      .addToken(
+        wUST.address,
+        constants.WeiPerEther,
+        HOUR_PERIOD,
+        HOUR_YIELD_20
+      );
     await feeder
       .connect(owner)
-      .addToken(dai.address, constants.WeiPerEther, HOUR_PERIOD, HOUR_YIELD_15);
+      .addToken(DAI.address, constants.WeiPerEther, HOUR_PERIOD, HOUR_YIELD_15);
 
     await swapper.connect(owner).setSwapFactory(uniFactory.address);
 
@@ -154,15 +121,15 @@ describe("ConversionPool", async () => {
       .initialize(
         "Anchor DAI Token",
         "aDAI",
-        dai.address,
-        ust.address,
-        aust.address,
+        DAI.address,
+        wUST.address,
+        aUST.address,
         router.address,
         swapper.address,
         feeder.address
       );
 
-    adai = await ethers.getContractAt(
+    aDAI = await ethers.getContractAt(
       "ERC20Controlled",
       await pool.outputToken()
     );
@@ -170,7 +137,7 @@ describe("ConversionPool", async () => {
 
   describe("after start", () => {
     beforeEach("start", async () => {
-      await feeder.connect(owner).startUpdate([ust.address, dai.address]);
+      await feeder.connect(owner).startUpdate([wUST.address, DAI.address]);
 
       let addrs = [];
       for (let i = 0; i < 2; i++) {
@@ -188,29 +155,29 @@ describe("ConversionPool", async () => {
 
     it("works well with allocated operation", async () => {
       // allocation
-      await router.connect(owner).allocate(SIZE);
+      await controller.connect(bot).allocate(SIZE);
 
-      await dai.connect(owner).mint(operator.address, amount);
-      await dai.connect(operator).approve(pool.address, amount);
-      await pool.connect(operator).deposit(amount);
-      console.log(utils.formatEther(await adai.balanceOf(operator.address)));
+      await DAI.connect(owner).mint(user.address, amount);
+      await DAI.connect(user).approve(pool.address, amount);
+      await pool.connect(user).functions["deposit(uint256)"](amount);
+      console.log(utils.formatEther(await aDAI.balanceOf(user.address)));
 
-      await aust.connect(owner).mint(pool.address, amount);
-      const aDAIAmount = await adai.balanceOf(operator.address);
-      await adai.connect(operator).approve(pool.address, aDAIAmount);
-      await pool.connect(operator).redeem(aDAIAmount);
+      await aUST.connect(owner).mint(pool.address, amount);
+      const aDAIAmount = await aDAI.balanceOf(user.address);
+      await aDAI.connect(user).approve(pool.address, aDAIAmount);
+      await pool.connect(user).functions["redeem(uint256)"](aDAIAmount);
     });
 
     it("works well with deploy new operation", async () => {
-      await dai.connect(owner).mint(operator.address, amount);
-      await dai.connect(operator).approve(pool.address, amount);
-      await pool.connect(operator).deposit(amount);
-      console.log(utils.formatEther(await adai.balanceOf(operator.address)));
+      await DAI.connect(owner).mint(user.address, amount);
+      await DAI.connect(user).approve(pool.address, amount);
+      await pool.connect(user).functions["deposit(uint256)"](amount);
+      console.log(utils.formatEther(await aDAI.balanceOf(user.address)));
 
-      await aust.connect(owner).mint(pool.address, amount);
-      const aDAIAmount = await adai.balanceOf(operator.address);
-      await adai.connect(operator).approve(pool.address, aDAIAmount);
-      await pool.connect(operator).redeem(aDAIAmount);
+      await aUST.connect(owner).mint(pool.address, amount);
+      const aDAIAmount = await aDAI.balanceOf(user.address);
+      await aDAI.connect(user).approve(pool.address, aDAIAmount);
+      await pool.connect(user).functions["redeem(uint256)"](aDAIAmount);
     });
   });
 });
