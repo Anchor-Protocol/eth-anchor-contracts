@@ -1,6 +1,7 @@
 import { ethers, network, run } from "hardhat";
+
 import { encodeParameters } from "../test/shared/utilities";
-import { CONTRACTS } from "./contracts";
+import { CONTRACTS, GAS_PRICE as gasPrice } from "./contracts";
 import { deployExternalContracts, isLocalNetwork } from "./local";
 
 async function main() {
@@ -26,21 +27,21 @@ async function main() {
   let tx;
 
   // deploy operation store
-  const store = await OperationStore.connect(operator).deploy();
+  const store = await OperationStore.connect(operator).deploy({ gasPrice });
   console.log(`waiting ${store.address} ${store.deployTransaction.hash}`);
   await provider.waitForTransaction(store.deployTransaction.hash, 2);
 
   // deploy factory
-  const factory = await OperationFactory.connect(operator).deploy();
+  const factory = await OperationFactory.connect(operator).deploy({ gasPrice });
   console.log(`waiting ${factory.address} ${factory.deployTransaction.hash}`);
   await provider.waitForTransaction(factory.deployTransaction.hash, 2);
 
   // deploy controller (router)
-  const router = await Router.connect(operator).deploy();
+  const router = await Router.connect(operator).deploy({ gasPrice });
   console.log(`waiting ${router.address} ${router.deployTransaction.hash}`);
   await provider.waitForTransaction(router.deployTransaction.hash, 2);
 
-  const controller = await Controller.connect(operator).deploy();
+  const controller = await Controller.connect(operator).deploy({ gasPrice });
   console.log(
     `waiting ${controller.address} ${controller.deployTransaction.hash}`
   );
@@ -48,22 +49,30 @@ async function main() {
 
   // ACL setting - factory
   {
-    tx = await factory.connect(operator).transferRouter(router.address);
+    tx = await factory
+      .connect(operator)
+      .transferRouter(router.address, { gasPrice });
     console.log(`waiting ${tx.hash}`);
     await provider.waitForTransaction(tx.hash, 2);
 
-    tx = await factory.connect(operator).transferController(controller.address);
+    tx = await factory
+      .connect(operator)
+      .transferController(controller.address, { gasPrice });
     console.log(`waiting ${tx.hash}`);
     await provider.waitForTransaction(tx.hash, 2);
   }
 
   // ACL setting - store
   {
-    tx = await store.connect(operator).transferRouter(router.address);
+    tx = await store
+      .connect(operator)
+      .transferRouter(router.address, { gasPrice });
     console.log(`waiting ${tx.hash}`);
     await provider.waitForTransaction(tx.hash, 2);
 
-    tx = await store.connect(operator).transferController(controller.address);
+    tx = await store
+      .connect(operator)
+      .transferController(controller.address, { gasPrice });
     console.log(`waiting ${tx.hash}`);
     await provider.waitForTransaction(tx.hash, 2);
   }
@@ -75,19 +84,20 @@ async function main() {
       0,
       factory.address,
       contracts.UST,
-      contracts.aUST
+      contracts.aUST,
+      { gasPrice }
     );
   console.log(`waiting ${tx.hash}`);
   await provider.waitForTransaction(tx.hash, 2);
 
   tx = await controller
     .connect(operator)
-    .initialize(store.address, 0, factory.address);
+    .initialize(store.address, 0, factory.address, { gasPrice });
   console.log(`waiting ${tx.hash}`);
   await provider.waitForTransaction(tx.hash, 2);
 
   // deploy master implementation of Operation.sol
-  const stdOpt = await Operation.connect(operator).deploy();
+  const stdOpt = await Operation.connect(operator).deploy({ gasPrice });
   await provider.waitForTransaction(stdOpt.deployTransaction.hash, 2);
 
   tx = await stdOpt
@@ -102,14 +112,17 @@ async function main() {
           contracts.UST,
           contracts.aUST,
         ]
-      )
+      ),
+      { gasPrice }
     );
   console.log(`waiting ${tx.hash}`);
   await provider.waitForTransaction(tx.hash, 2);
 
   tx = await factory
     .connect(operator)
-    .pushStandardOperation(router.address, controller.address, stdOpt.address);
+    .pushStandardOperation(router.address, controller.address, stdOpt.address, {
+      gasPrice,
+    });
   console.log(`waiting ${tx.hash}`);
   await provider.waitForTransaction(tx.hash, 2);
 

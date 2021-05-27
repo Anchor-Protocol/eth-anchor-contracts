@@ -1,3 +1,7 @@
+import { utils } from "ethers";
+
+export const GAS_PRICE = utils.parseUnits("100", "gwei");
+
 export const CONTRACTS = {
   mainnet: {
     // uniswap

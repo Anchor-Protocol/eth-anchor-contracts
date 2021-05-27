@@ -1,9 +1,7 @@
-import { BigNumber, constants, Contract } from "ethers";
+import { BigNumber, Contract } from "ethers";
 import { ethers, network, run } from "hardhat";
 
-import { CONTRACTS } from "./contracts";
-
-const gasPrice = ethers.utils.parseUnits("100", "gwei");
+import { CONTRACTS, GAS_PRICE as gasPrice } from "./contracts";
 
 export async function deployExtension(
   router: Contract,
@@ -22,7 +20,7 @@ export async function deployExtension(
 
   const feeder = feederAddr
     ? await ethers.getContractAt("ExchangeRateFeeder", feederAddr)
-    : await Feeder.connect(operator).deploy();
+    : await Feeder.connect(operator).deploy({ gasPrice });
   if (!feederAddr) {
     console.log(`waiting ${feeder.address} ${feeder.deployTransaction.hash}`);
     await provider.waitForTransaction(feeder.deployTransaction.hash, 2);
@@ -30,8 +28,7 @@ export async function deployExtension(
 
   const swapper = swapperAddr
     ? await ethers.getContractAt("UniswapSwapper", swapperAddr)
-    : await Swapper.connect(operator).deploy();
-
+    : await Swapper.connect(operator).deploy({ gasPrice });
   if (!swapperAddr) {
     console.log(`waiting ${swapper.address} ${swapper.deployTransaction.hash}`);
     await provider.waitForTransaction(swapper.deployTransaction.hash, 2);
@@ -52,7 +49,7 @@ export async function deployExtension(
       .connect(operator)
       .addToken(
         ropsten.UST,
-        constants.WeiPerEther,
+        "1038170811442615733",
         21600,
         BigNumber.from("1000124885576180370"),
         { gasPrice }
@@ -66,7 +63,7 @@ export async function deployExtension(
       .connect(operator)
       .addToken(
         token.address,
-        constants.WeiPerEther,
+        "1038170811442615733",
         21600,
         BigNumber.from("1000095731939800926"),
         { gasPrice }
@@ -125,24 +122,20 @@ export async function deployExtension(
 }
 
 async function main() {
-  const Router = await ethers.getContractFactory("Router");
   const router = await ethers.getContractAt(
     "Router",
-    "0x014Bce060CBE2C9F6b16bA4A3e05217eb2D76291"
+    "0x0d4366b32d146622bf884C53cD7Dd6a1d268d809"
   );
 
-  const contracts = CONTRACTS.ropsten;
+  const contracts = CONTRACTS[network.name];
 
   const tokens: Contract[] = [];
-  // tokens.push(await ethers.getContractAt("ERC20", contracts.DAI));
+  tokens.push(await ethers.getContractAt("ERC20", contracts.DAI));
   tokens.push(await ethers.getContractAt("ERC20", contracts.USDT));
   tokens.push(await ethers.getContractAt("ERC20", contracts.USDC));
-  await deployExtension(
-    router,
-    tokens,
-    "0x143C53286FB99A3D0574e46a58e61164066526d0",
-    "0xDe2EFdC981EdaB1C9407c59b2BC8FaC4e883AbDd"
-  );
+  tokens.push(await ethers.getContractAt("ERC20", contracts.BUSD));
+
+  await deployExtension(router, tokens);
 }
 
 main().catch(console.error);
