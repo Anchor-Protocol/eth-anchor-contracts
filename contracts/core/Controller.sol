@@ -61,8 +61,7 @@ contract Controller is IController, Context, Operator, Initializable {
             IOperationStore(optStore).getStatusOf(_opt);
 
         require(
-            status == IOperationStore.Status.RUNNING_AUTO &&
-                operator == super._msgSender(),
+            status == IOperationStore.Status.RUNNING_AUTO,
             "Controller: invalid sender"
         );
 
