@@ -73,10 +73,16 @@ async function main() {
     .initialize(
       store.address,
       0,
+      factory.address,
       contracts.UST,
-      contracts.aUST,
-      factory.address
+      contracts.aUST
     );
+  console.log(`waiting ${tx.hash}`);
+  await provider.waitForTransaction(tx.hash, 2);
+
+  tx = await controller
+    .connect(operator)
+    .initialize(store.address, 0, factory.address);
   console.log(`waiting ${tx.hash}`);
   await provider.waitForTransaction(tx.hash, 2);
 
