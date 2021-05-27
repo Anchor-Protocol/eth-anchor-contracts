@@ -62,7 +62,7 @@ contract Controller is IController, Context, Operator, Initializable {
 
         require(
             status == IOperationStore.Status.RUNNING_AUTO,
-            "Controller: invalid sender"
+            "Controller: invalid status for finish"
         );
 
         IOperation(_opt).finish();
