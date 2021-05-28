@@ -111,7 +111,7 @@ contract ExchangeRateFeeder is IExchangeRateFeeder, Ownable {
         for (uint256 i = 0; i < updateCount; i++) {
             token.exchangeRate = token.exchangeRate.mul(token.weight).div(1e18);
         }
-        token.lastUpdatedAt = token.lastUpdatedAt.add(block.timestamp);
+        token.lastUpdatedAt = block.timestamp;
 
         tokens[_token] = token;
 
