@@ -16,14 +16,18 @@ contract UniswapSwapper is ISwapper, Ownable {
     using SafeERC20 for IERC20;
 
     address public factory;
-    address public bridgeToken;
+    mapping(address => mapping(address => address[])) public routes;
 
     function setSwapFactory(address _factory) public onlyOwner {
         factory = _factory;
     }
 
-    function setBridgeToken(address _bridgeToken) public onlyOwner {
-        bridgeToken = _bridgeToken;
+    function setRoute(
+        address _from,
+        address _to,
+        address[] memory path
+    ) public onlyOwner {
+        routes[_from][_to] = path;
     }
 
     // swap: fetched from Uniswap/uniswap-v2-periphery
@@ -56,19 +60,7 @@ contract UniswapSwapper is ISwapper, Ownable {
         uint256 _minAmountOut,
         address _beneficiary
     ) public override {
-        address[] memory path;
-
-        if (bridgeToken == address(0x0)) {
-            path = new address[](2);
-            path[0] = _from;
-            path[1] = _to;
-        } else {
-            path = new address[](3);
-            path[0] = _from;
-            path[1] = bridgeToken;
-            path[2] = _to;
-        }
-
+        address[] memory path = routes[_from][_to];
         uint256[] memory amounts =
             UniswapV2Library.getAmountsOut(factory, _amount, path);
         require(
