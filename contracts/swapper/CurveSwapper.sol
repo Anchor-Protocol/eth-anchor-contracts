@@ -71,7 +71,7 @@ contract CurveSwapper is ISwapper, Ownable {
         amounts = new uint256[](route.pools.length);
         amounts[0] = _amount;
         for (uint256 i = 0; i < route.pools.length; i++) {
-            amounts[i] = ICurve(route.pools[i]).get_dy(
+            amounts[i + 1] = ICurve(route.pools[i]).get_dy(
                 route.indexes[i.mul(2)],
                 route.indexes[i.mul(2).add(1)],
                 amounts[i]
@@ -101,7 +101,7 @@ contract CurveSwapper is ISwapper, Ownable {
                 route.indexes[i.mul(2)],
                 route.indexes[i.mul(2).add(1)],
                 amounts[i],
-                amounts[i]
+                amounts[i + 1]
             );
         }
 
