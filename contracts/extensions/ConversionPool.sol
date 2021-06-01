@@ -136,6 +136,7 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
 
     modifier _updateExchangeRate {
         feeder.update(address(inputToken));
+        feeder.update(address(proxyInputToken));
 
         _;
     }
