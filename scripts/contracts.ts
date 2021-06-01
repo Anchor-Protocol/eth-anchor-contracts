@@ -11,10 +11,10 @@ export const CONTRACTS = {
     aUST: "0xa8De3e3c934e2A1BB08B010104CcaBBD4D6293ab",
     UST: "0xa47c8bf37f92aBed4A126BDA807A7b7498661acD",
     // ether
-    DAI: "",
-    USDT: "",
-    USDC: "",
-    BUSD: "",
+    DAI: "0x6b175474e89094c44da98b954eedeac495271d0f",
+    USDT: "0xdac17f958d2ee523a2206206994597c13d831ec7",
+    USDC: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    BUSD: "0x4fabb145d64652a948d72533023f6e7a623c7c53",
   },
   ropsten: {
     // uniswap
