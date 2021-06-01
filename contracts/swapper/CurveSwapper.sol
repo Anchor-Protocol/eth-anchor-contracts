@@ -18,6 +18,12 @@ interface ICurve {
         uint256 dx
     ) external view returns (uint256);
 
+    function get_dy_underlying(
+        int128 i,
+        int128 j,
+        uint256 dx
+    ) external view returns (uint256);
+
     function exchange(
         int128 i,
         int128 j,
@@ -71,7 +77,7 @@ contract CurveSwapper is ISwapper, Ownable {
         amounts = new uint256[](route.pools.length);
         amounts[0] = _amount;
         for (uint256 i = 0; i < route.pools.length; i++) {
-            amounts[i + 1] = ICurve(route.pools[i]).get_dy(
+            amounts[i + 1] = ICurve(route.pools[i]).get_dy_underlying(
                 route.indexes[i.mul(2)],
                 route.indexes[i.mul(2).add(1)],
                 amounts[i]
