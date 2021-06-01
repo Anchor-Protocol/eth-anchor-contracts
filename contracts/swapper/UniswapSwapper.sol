@@ -61,6 +61,11 @@ contract UniswapSwapper is ISwapper, Ownable {
         address _beneficiary
     ) public override {
         address[] memory path = routes[_from][_to];
+        if (path.length == 0) {
+            path = new address[](2);
+            path[0] = _from;
+            path[1] = _to;
+        }
         uint256[] memory amounts =
             UniswapV2Library.getAmountsOut(factory, _amount, path);
         require(
