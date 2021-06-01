@@ -97,7 +97,7 @@ contract CurveSwapper is ISwapper, Ownable {
         );
 
         for (uint256 i = 0; i < route.pools.length; i++) {
-            ICurve(route.pools[i]).exchange(
+            ICurve(route.pools[i]).exchange_underlying(
                 route.indexes[i.mul(2)],
                 route.indexes[i.mul(2).add(1)],
                 amounts[i],
