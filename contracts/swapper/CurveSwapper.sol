@@ -64,13 +64,26 @@ contract CurveSwapper is ISwapper, Ownable {
         Route storage route = routes[_from][_to];
         route.pools = _pools;
         route.indexes = _indexes;
+
+        for (uint256 i = 0; i < route.pools.length; i++) {
+            IERC20(
+                ICurve(route.pools[i]).coins(uint256(route.indexes[i.mul(2)]))
+            )
+                .safeApprove(route.pools[i], type(uint256).max);
+            IERC20(
+                ICurve(route.pools[i]).coins(
+                    uint256(route.indexes[i.mul(2).add(1)])
+                )
+            )
+                .safeApprove(route.pools[i], type(uint256).max);
+        }
     }
 
     // pools[]    a   b   c   d   pool.length  * 2 = indexes.length
     // indexes[]  0 1 1 2 2 3 3 4
 
-    function _getAmountsOut(uint256 _amount, Route memory route)
-        private
+    function getAmountsOut(uint256 _amount, Route memory route)
+        public
         view
         returns (uint256[] memory amounts)
     {
@@ -95,7 +108,7 @@ contract CurveSwapper is ISwapper, Ownable {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), _amount);
 
         Route memory route = routes[_from][_to];
-        uint256[] memory amounts = _getAmountsOut(_amount, route);
+        uint256[] memory amounts = getAmountsOut(_amount, route);
         uint256 amountOut = amounts[amounts.length - 1];
         require(
             amountOut >= _minAmountOut,
