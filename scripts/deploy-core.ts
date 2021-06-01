@@ -18,7 +18,7 @@ async function main() {
   const Controller = await ethers.getContractFactory("Controller");
 
   let contracts: { [name: string]: string };
-  if (isLocalNetwork()) {
+  if (!isLocalNetwork()) {
     contracts = CONTRACTS[network.name];
   } else {
     contracts = await deployExternalContracts(operator);
@@ -126,7 +126,7 @@ async function main() {
   console.log(`waiting ${tx.hash}`);
   await provider.waitForTransaction(tx.hash, 2);
 
-  if (isLocalNetwork()) {
+  if (!isLocalNetwork()) {
     for await (const [name, contract] of Object.entries({
       store,
       factory,
