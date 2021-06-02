@@ -10,7 +10,13 @@ import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {ISwapper} from "./ISwapper.sol";
 
 interface ICurve {
+    function N_COINS() external view returns (int128);
+
+    function BASE_N_COINS() external view returns (int128);
+
     function coins(uint256 i) external view returns (address); // pool
+
+    function base_coins(uint256 i) external view returns (address); // base_pool
 
     function get_dy(
         int128 i,
@@ -54,6 +60,7 @@ contract CurveSwapper is ISwapper, Ownable {
         address _from,
         address _to,
         address[] memory _pools,
+        address[] memory _tokens,
         int128[] memory _indexes
     ) public onlyOwner {
         require(_indexes.length >= 2, "CurveSwapper: INVALID_PATH");
@@ -66,16 +73,7 @@ contract CurveSwapper is ISwapper, Ownable {
         route.indexes = _indexes;
 
         for (uint256 i = 0; i < route.pools.length; i++) {
-            IERC20(
-                ICurve(route.pools[i]).coins(uint256(route.indexes[i.mul(2)]))
-            )
-                .safeApprove(route.pools[i], type(uint256).max);
-            IERC20(
-                ICurve(route.pools[i]).coins(
-                    uint256(route.indexes[i.mul(2).add(1)])
-                )
-            )
-                .safeApprove(route.pools[i], type(uint256).max);
+            IERC20(_tokens[i]).safeApprove(_pools[i], type(uint256).max);
         }
     }
 
