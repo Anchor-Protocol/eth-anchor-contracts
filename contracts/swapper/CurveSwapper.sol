@@ -87,10 +87,10 @@ contract CurveSwapper is ISwapper, Ownable {
         view
         returns (uint256[] memory amounts)
     {
-        amounts = new uint256[](route.pools.length + 1);
+        amounts = new uint256[](route.pools.length.add(1));
         amounts[0] = _amount;
         for (uint256 i = 0; i < route.pools.length; i++) {
-            amounts[i + 1] = ICurve(route.pools[i]).get_dy_underlying(
+            amounts[i.add(1)] = ICurve(route.pools[i]).get_dy_underlying(
                 route.indexes[i.mul(2)],
                 route.indexes[i.mul(2).add(1)],
                 amounts[i]
@@ -109,7 +109,7 @@ contract CurveSwapper is ISwapper, Ownable {
 
         Route memory route = routes[_from][_to];
         uint256[] memory amounts = getAmountsOut(_amount, route);
-        uint256 amountOut = amounts[amounts.length - 1];
+        uint256 amountOut = amounts[amounts.length.sub(1)];
         require(
             amountOut >= _minAmountOut,
             "CurveSwapper: INSUFFICIENT_OUTPUT_AMOUNT"
@@ -120,7 +120,7 @@ contract CurveSwapper is ISwapper, Ownable {
                 route.indexes[i.mul(2)],
                 route.indexes[i.mul(2).add(1)],
                 amounts[i],
-                amounts[i + 1]
+                amounts[i.add(1)]
             );
         }
 
