@@ -1,6 +1,6 @@
 import { utils } from "ethers";
 
-export const GAS_PRICE = utils.parseUnits("100", "gwei");
+export const GAS_PRICE = utils.parseUnits("50", "gwei");
 
 export const CONTRACTS = {
   mainnet: {
@@ -15,6 +15,8 @@ export const CONTRACTS = {
     USDT: "0xdac17f958d2ee523a2206206994597c13d831ec7",
     USDC: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
     BUSD: "0x4fabb145d64652a948d72533023f6e7a623c7c53",
+    CrvUSTPool: "0x890f4e345B1dAED0367A877a1612f86A1f86985f",
+    CrvBUSDPool: "0x79a8C46DeA5aDa233ABaFFD40F3A0A2B1e5A4F27",
   },
   ropsten: {
     // uniswap
