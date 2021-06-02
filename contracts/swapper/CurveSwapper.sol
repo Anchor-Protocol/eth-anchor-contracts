@@ -73,7 +73,9 @@ contract CurveSwapper is ISwapper, Ownable {
         route.indexes = _indexes;
 
         for (uint256 i = 0; i < route.pools.length; i++) {
-            IERC20(_tokens[i]).safeApprove(_pools[i], type(uint256).max);
+            if (IERC20(_tokens[i]).allowance(address(this), _pools[i]) == 0) {
+                IERC20(_tokens[i]).safeApprove(_pools[i], type(uint256).max);
+            }
         }
     }
 
