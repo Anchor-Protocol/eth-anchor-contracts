@@ -85,7 +85,7 @@ contract CurveSwapper is ISwapper, Ownable {
         view
         returns (uint256[] memory amounts)
     {
-        amounts = new uint256[](route.pools.length);
+        amounts = new uint256[](route.pools.length + 1);
         amounts[0] = _amount;
         for (uint256 i = 0; i < route.pools.length; i++) {
             amounts[i + 1] = ICurve(route.pools[i]).get_dy_underlying(
