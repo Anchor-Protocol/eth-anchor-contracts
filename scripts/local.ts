@@ -85,5 +85,5 @@ export async function deployExternalContracts(
 }
 
 export function isLocalNetwork(): boolean {
-  return network.name !== "local" && network.name !== "hardhat";
+  return network.name === "local" || network.name === "hardhat";
 }
