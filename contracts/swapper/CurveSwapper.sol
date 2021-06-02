@@ -79,25 +79,6 @@ contract CurveSwapper is ISwapper, Ownable {
         }
     }
 
-    // pools[]    a   b   c   d   pool.length  * 2 = indexes.length
-    // indexes[]  0 1 1 2 2 3 3 4
-
-    function getAmountsOut(uint256 _amount, Route memory route)
-        public
-        view
-        returns (uint256[] memory amounts)
-    {
-        amounts = new uint256[](route.pools.length.add(1));
-        amounts[0] = _amount;
-        for (uint256 i = 0; i < route.pools.length; i++) {
-            amounts[i.add(1)] = ICurve(route.pools[i]).get_dy_underlying(
-                route.indexes[i.mul(2)],
-                route.indexes[i.mul(2).add(1)],
-                amounts[i]
-            );
-        }
-    }
-
     function swapToken(
         address _from, // ignore
         address _to, // ignore
@@ -108,26 +89,20 @@ contract CurveSwapper is ISwapper, Ownable {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), _amount);
 
         Route memory route = routes[_from][_to];
-        uint256[] memory amounts = getAmountsOut(_amount, route);
-        uint256 amountOut = amounts[amounts.length.sub(1)];
-        require(
-            amountOut >= _minAmountOut,
-            "CurveSwapper: INSUFFICIENT_OUTPUT_AMOUNT"
-        );
-
+        uint256 amount = _amount;
         for (uint256 i = 0; i < route.pools.length; i++) {
-            ICurve(route.pools[i]).exchange_underlying(
+            amount = ICurve(route.pools[i]).exchange_underlying(
                 route.indexes[i.mul(2)],
                 route.indexes[i.mul(2).add(1)],
-                amounts[i],
-                amounts[i.add(1)]
+                amount,
+                0
             );
         }
 
-        require(
-            IERC20(_to).balanceOf(address(this)) >= amountOut,
-            "CurveSwapper: INVALID_SWAP_RESULT"
+        require(amount >= _minAmountOut, "CurveSwapper: INVALID_SWAP_RESULT");
+        IERC20(_to).safeTransfer(
+            _beneficiary,
+            IERC20(_to).balanceOf(address(this))
         );
-        IERC20(_to).safeTransfer(_beneficiary, amountOut);
     }
 }
