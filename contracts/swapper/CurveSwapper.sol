@@ -56,6 +56,14 @@ contract CurveSwapper is ISwapper, Ownable {
 
     mapping(address => mapping(address => Route)) private routes;
 
+    function getRoute(address _from, address _to)
+        public
+        view
+        returns (Route memory)
+    {
+        return routes[_from][_to];
+    }
+
     function setRoute(
         address _from,
         address _to,
