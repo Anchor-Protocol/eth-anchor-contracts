@@ -70,6 +70,7 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
         proxyInputToken = IERC20(_proxyInputToken);
         proxyOutputToken = IERC20(_proxyOutputToken);
 
+        setRole(msg.sender, msg.sender);
         setSwapper(_swapper);
         setOperationRouter(_optRouter);
         setExchangeRateFeeder(_exchangeRateFeeder);
