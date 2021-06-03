@@ -4,6 +4,7 @@ import { ethers } from "hardhat";
 import { encodeParameters } from "./utilities";
 
 export type Role = {
+  admin: SignerWithAddress;
   owner: SignerWithAddress;
   user: SignerWithAddress;
   bot: SignerWithAddress;
@@ -34,7 +35,9 @@ export async function deployCore(): Promise<{
   token: Token;
   core: Core;
 }> {
-  const [owner, user, bot] = await ethers.getSigners();
+  const [admin, owner, user, bot] = await ethers.getSigners();
+
+  const Proxy = await ethers.getContractFactory("SimpleProxy");
 
   const TestAsset = await ethers.getContractFactory("TestAsset");
   const wUST = await TestAsset.connect(owner).deploy();
@@ -47,7 +50,9 @@ export async function deployCore(): Promise<{
   const factory = await Factory.connect(owner).deploy();
 
   const Router = await ethers.getContractFactory("Router");
-  const router = await Router.connect(owner).deploy();
+  const routerImpl = await Router.connect(owner).deploy();
+  const routerProxy = await Proxy.connect(admin).deploy(routerImpl.address);
+  const router = await ethers.getContractAt("Router", routerProxy.address);
   await router
     .connect(owner)
     .initialize(
@@ -59,7 +64,14 @@ export async function deployCore(): Promise<{
     );
 
   const Controller = await ethers.getContractFactory("Controller");
-  const controller = await Controller.connect(owner).deploy();
+  const controllerImpl = await Controller.connect(owner).deploy();
+  const controllerProxy = await Proxy.connect(admin).deploy(
+    controllerImpl.address
+  );
+  const controller = await ethers.getContractAt(
+    "Controller",
+    controllerProxy.address
+  );
   await controller
     .connect(owner)
     .initialize(store.address, STD_OPT_ID, factory.address);
@@ -104,7 +116,7 @@ export async function deployCore(): Promise<{
   }
 
   return {
-    role: { owner, user, bot },
+    role: { admin, owner, user, bot },
     token: { aUST, wUST },
     core: { store, factory, router, controller },
   };

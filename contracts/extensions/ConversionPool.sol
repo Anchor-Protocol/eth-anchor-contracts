@@ -120,16 +120,12 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
 
     function provideReserve(uint256 _amount) public onlyGranted {
         proxyReserve = proxyReserve.add(_amount);
-        proxyOutputToken.safeTransferFrom(
-            super._msgSender(),
-            address(this),
-            _amount
-        );
+        proxyOutputToken.safeTransferFrom(_msgSender(), address(this), _amount);
     }
 
     function removeReserve(uint256 _amount) public onlyGranted {
         proxyReserve = proxyReserve.sub(_amount);
-        proxyOutputToken.safeTransfer(super._msgSender(), _amount);
+        proxyOutputToken.safeTransfer(_msgSender(), _amount);
     }
 
     // operations
@@ -181,7 +177,7 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
     {
         require(isDepositAllowed, "ConversionPool: deposit not stopped");
 
-        inputToken.safeTransferFrom(super._msgSender(), address(this), _amount);
+        inputToken.safeTransferFrom(_msgSender(), address(this), _amount);
 
         // swap to UST
         swapper.swapToken(
@@ -197,20 +193,20 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
         IRouter(optRouter).depositStable(ust);
 
         uint256 pER = feeder.exchangeRateOf(address(inputToken), false);
-        outputToken.mint(super._msgSender(), ust.mul(1e18).div(pER));
+        outputToken.mint(_msgSender(), ust.mul(1e18).div(pER));
     }
 
     function redeem(uint256 _amount) public override _updateExchangeRate {
         require(isRedemptionAllowed, "ConversionPool: redemption not allowed");
 
-        outputToken.burnFrom(super._msgSender(), _amount);
+        outputToken.burnFrom(_msgSender(), _amount);
 
         uint256 pER = feeder.exchangeRateOf(address(inputToken), false);
         uint256 out = _amount.mul(pER).div(1e18);
 
         uint256 aER = feeder.exchangeRateOf(address(proxyInputToken), false);
         IConversionRouter(optRouter).redeemStable(
-            super._msgSender(),
+            _msgSender(),
             out.mul(1e18).div(aER),
             address(swapper),
             address(inputToken)

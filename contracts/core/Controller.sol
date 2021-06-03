@@ -47,6 +47,8 @@ contract Controller is IController, Context, Operator, Initializable {
         optStore = _optStore;
         optStdId = _optStdId;
         optFactory = _optFactory;
+
+        setRole(_msgSender(), _msgSender());
     }
 
     function allocate(uint256 _amount) public override onlyGranted {

@@ -162,7 +162,7 @@ contract Operation is Context, OperationACL, IOperation, Initializable {
             currentStatus.input = address(wUST);
             currentStatus.output = address(aUST);
 
-            wUST.safeTransferFrom(super._msgSender(), address(this), _amount);
+            wUST.safeTransferFrom(_msgSender(), address(this), _amount);
             wUST.burn(_amount, terraAddress);
 
             emit InitDeposit(_operator, _amount, terraAddress);
@@ -170,7 +170,7 @@ contract Operation is Context, OperationACL, IOperation, Initializable {
             currentStatus.input = address(aUST);
             currentStatus.output = address(wUST);
 
-            aUST.safeTransferFrom(super._msgSender(), address(this), _amount);
+            aUST.safeTransferFrom(_msgSender(), address(this), _amount);
             aUST.burn(_amount, terraAddress);
 
             emit InitRedemption(_operator, _amount, terraAddress);

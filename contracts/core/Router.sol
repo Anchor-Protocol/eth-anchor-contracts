@@ -6,9 +6,9 @@ import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
+import {Ownable} from "../utils/Ownable.sol";
 import {StdQueue} from "../utils/Queue.sol";
 import {IOperation} from "../operations/Operation.sol";
 import {IOperationStore} from "../operations/OperationStore.sol";
@@ -110,6 +110,7 @@ contract Router is IRouter, IConversionRouter, Context, Ownable, Initializable {
         optFactory = _optFactory;
         wUST = _wUST;
         aUST = _aUST;
+        setOwner(msg.sender);
     }
 
     function setOperationStore(address _store) public onlyOwner {
@@ -154,11 +155,7 @@ contract Router is IRouter, IConversionRouter, Context, Ownable, Initializable {
         }
 
         if (_typ == IOperation.Type.DEPOSIT) {
-            IERC20(wUST).safeTransferFrom(
-                super._msgSender(),
-                address(this),
-                _amount
-            );
+            IERC20(wUST).safeTransferFrom(_msgSender(), address(this), _amount);
             operation.initDepositStable(
                 _operator,
                 _amount,
@@ -170,11 +167,7 @@ contract Router is IRouter, IConversionRouter, Context, Ownable, Initializable {
         }
 
         if (_typ == IOperation.Type.REDEEM) {
-            IERC20(aUST).safeTransferFrom(
-                super._msgSender(),
-                address(this),
-                _amount
-            );
+            IERC20(aUST).safeTransferFrom(_msgSender(), address(this), _amount);
             operation.initRedeemStable(
                 _operator,
                 _amount,
@@ -195,8 +188,7 @@ contract Router is IRouter, IConversionRouter, Context, Ownable, Initializable {
         if (status == IOperationStore.Status.RUNNING_MANUAL) {
             // check sender
             require(
-                IOperation(_opt).getCurrentStatus().operator ==
-                    super._msgSender(),
+                IOperation(_opt).getCurrentStatus().operator == _msgSender(),
                 "Router: invalid sender"
             );
         } else {
@@ -229,7 +221,7 @@ contract Router is IRouter, IConversionRouter, Context, Ownable, Initializable {
     function depositStable(uint256 _amount) public override {
         _init(
             IOperation.Type.DEPOSIT,
-            super._msgSender(),
+            _msgSender(),
             _amount,
             address(0x0),
             address(0x0),
@@ -267,7 +259,7 @@ contract Router is IRouter, IConversionRouter, Context, Ownable, Initializable {
     function initDepositStable(uint256 _amount) public override {
         _init(
             IOperation.Type.DEPOSIT,
-            super._msgSender(),
+            _msgSender(),
             _amount,
             address(0x0),
             address(0x0),
@@ -282,7 +274,7 @@ contract Router is IRouter, IConversionRouter, Context, Ownable, Initializable {
     ) public override {
         _init(
             IOperation.Type.DEPOSIT,
-            super._msgSender(),
+            _msgSender(),
             _amount,
             _swapper,
             _swapDest,
@@ -299,7 +291,7 @@ contract Router is IRouter, IConversionRouter, Context, Ownable, Initializable {
     function redeemStable(uint256 _amount) public override {
         _init(
             IOperation.Type.REDEEM,
-            super._msgSender(),
+            _msgSender(),
             _amount,
             address(0x0),
             address(0x0),
@@ -337,7 +329,7 @@ contract Router is IRouter, IConversionRouter, Context, Ownable, Initializable {
     function initRedeemStable(uint256 _amount) public override {
         _init(
             IOperation.Type.REDEEM,
-            super._msgSender(),
+            _msgSender(),
             _amount,
             address(0x0),
             address(0x0),
@@ -352,7 +344,7 @@ contract Router is IRouter, IConversionRouter, Context, Ownable, Initializable {
     ) public override {
         _init(
             IOperation.Type.REDEEM,
-            super._msgSender(),
+            _msgSender(),
             _amount,
             _swapper,
             _swapDest,

@@ -13,6 +13,11 @@ contract Operator is Context {
         operator = _msgSender();
     }
 
+    function setRole(address _owner, address _operator) internal virtual {
+        owner = _owner;
+        operator = _operator;
+    }
+
     modifier onlyOwner {
         require(checkOwner(), "Operator: owner access denied");
 
