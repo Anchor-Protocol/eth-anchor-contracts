@@ -5,56 +5,42 @@ import { CONTRACTS, GAS_PRICE as gasPrice } from "./contracts";
 
 export async function deployExtension(
   router: Contract,
+  swapper: Contract,
   tokens: Contract[],
-  feederAddr?: string,
-  swapperAddr?: string
+  feederAddr?: string
 ) {
-  const { ropsten } = CONTRACTS;
+  const contracts = CONTRACTS[network.name];
   const { provider } = ethers;
 
-  const [operator] = await ethers.getSigners();
+  const [operator, admin] = await ethers.getSigners();
 
-  const Swapper = await ethers.getContractFactory("UniswapSwapper");
   const Feeder = await ethers.getContractFactory("ExchangeRateFeeder");
   const Pool = await ethers.getContractFactory("ConversionPool");
+  const Proxy = await ethers.getContractFactory("SimpleProxy");
 
   const feeder = feederAddr
     ? await ethers.getContractAt("ExchangeRateFeeder", feederAddr)
     : await Feeder.connect(operator).deploy({ gasPrice });
   if (!feederAddr) {
-    console.log(`waiting ${feeder.address} ${feeder.deployTransaction.hash}`);
+    console.log(
+      `exchangeRateFeeder.deploy ${feeder.address} ${feeder.deployTransaction.hash}`
+    );
     await provider.waitForTransaction(feeder.deployTransaction.hash, 2);
   }
 
-  const swapper = swapperAddr
-    ? await ethers.getContractAt("UniswapSwapper", swapperAddr)
-    : await Swapper.connect(operator).deploy({ gasPrice });
-  if (!swapperAddr) {
-    console.log(`waiting ${swapper.address} ${swapper.deployTransaction.hash}`);
-    await provider.waitForTransaction(swapper.deployTransaction.hash, 2);
-  }
-
   let tx;
-
-  if (!swapperAddr) {
-    tx = await swapper
-      .connect(operator)
-      .setSwapFactory(ropsten.UniFactory, { gasPrice });
-    console.log(`waiting ${swapper.address} ${tx.hash}`);
-    await provider.waitForTransaction(tx.hash, 2);
-  }
 
   if (!feederAddr) {
     tx = await feeder
       .connect(operator)
       .addToken(
-        ropsten.UST,
-        "1038170811442615733",
+        contracts.UST,
+        "1042036828493072337",
         21600,
-        BigNumber.from("1000124885576180370"),
+        BigNumber.from("1000113372479925668"),
         { gasPrice }
       );
-    console.log(`waiting ${feeder.address} ${tx.hash}`);
+    console.log(`feeder.addToken ${feeder.address} ${tx.hash}`);
     await provider.waitForTransaction(tx.hash, 2);
   }
 
@@ -63,30 +49,45 @@ export async function deployExtension(
       .connect(operator)
       .addToken(
         token.address,
-        "1038170811442615733",
+        "1042036828493072337",
         21600,
         BigNumber.from("1000095731939800926"),
         { gasPrice }
       );
-    console.log(`waiting ${feeder.address} ${tx.hash}`);
+    console.log(`feeder.addToken ${feeder.address} ${tx.hash}`);
     await provider.waitForTransaction(tx.hash, 2);
   }
 
   tx = await feeder
     .connect(operator)
-    .startUpdate([ropsten.UST, ...tokens.map(({ address }) => address)], {
+    .startUpdate([contracts.UST, ...tokens.map(({ address }) => address)], {
       gasPrice,
     });
-  console.log(`waiting ${feeder.address} ${tx.hash}`);
+  console.log(`feeder.startUpdate ${feeder.address} ${tx.hash}`);
   await provider.waitForTransaction(tx.hash, 2);
 
   const pools = [];
   for await (const token of tokens) {
     const symbol = await token.symbol();
 
-    const pool = await Pool.connect(operator).deploy({ gasPrice });
-    console.log(`waiting ${pool.address} ${pool.deployTransaction.hash}`);
-    await provider.waitForTransaction(pool.deployTransaction.hash, 2);
+    const poolImpl = await Pool.connect(operator).deploy({ gasPrice });
+    console.log(
+      `pool.deploy ${poolImpl.address} ${poolImpl.deployTransaction.hash}`
+    );
+    await provider.waitForTransaction(poolImpl.deployTransaction.hash, 2);
+
+    const poolProxy = await Proxy.connect(admin).deploy(poolImpl.address, {
+      gasPrice,
+    });
+    console.log(
+      `poolProxy.deploy ${poolProxy.address} ${poolProxy.deployTransaction.hash}`
+    );
+    await provider.waitForTransaction(poolProxy.deployTransaction.hash, 2);
+
+    const pool = await ethers.getContractAt(
+      "ConversionPool",
+      poolProxy.address
+    );
 
     tx = await pool
       .connect(operator)
@@ -94,18 +95,20 @@ export async function deployExtension(
         `Anchor ${symbol} Token`,
         `a${symbol}`,
         token.address,
-        ropsten.UST,
-        ropsten.aUST,
+        contracts.UST,
+        contracts.aUST,
         router.address,
         swapper.address,
         feeder.address,
         { gasPrice }
       );
-    console.log(`waiting ${pool.address} ${tx.hash}`);
+    console.log(`pool.initialize ${pool.address} ${tx.hash}`);
     await provider.waitForTransaction(tx.hash, 2);
 
-    tx = await pool.connect(operator).setExchangeRateFeeder(feeder.address);
-    console.log(`wating ${pool.address} ${tx.hash}`);
+    tx = await pool
+      .connect(operator)
+      .setExchangeRateFeeder(feeder.address, { gasPrice });
+    console.log(`pool.setExchangeRateFeeder ${pool.address} ${tx.hash}`);
     await provider.waitForTransaction(tx.hash, 2);
 
     pools.push({ name: symbol, addr: pool.address });
@@ -128,18 +131,27 @@ export async function deployExtension(
 async function main() {
   const router = await ethers.getContractAt(
     "Router",
-    "0x0d4366b32d146622bf884C53cD7Dd6a1d268d809"
+    "0xcEF9E167d3f8806771e9bac1d4a0d568c39a9388"
+  );
+
+  const swapper = await ethers.getContractAt(
+    "ISwapper",
+    "0xf562A9500E3d75C2908FA634525E5dE775Ee858B"
+  );
+
+  const feeder = await ethers.getContractAt(
+    "ExchangeRateFeeder",
+    "0xd7c4f5903De8A256a1f535AC71CeCe5750d5197a"
   );
 
   const contracts = CONTRACTS[network.name];
-
   const tokens: Contract[] = [];
-  tokens.push(await ethers.getContractAt("ERC20", contracts.DAI));
-  tokens.push(await ethers.getContractAt("ERC20", contracts.USDT));
+  // tokens.push(await ethers.getContractAt("ERC20", contracts.DAI));
+  // tokens.push(await ethers.getContractAt("ERC20", contracts.USDT));
   tokens.push(await ethers.getContractAt("ERC20", contracts.USDC));
-  tokens.push(await ethers.getContractAt("ERC20", contracts.BUSD));
+  // tokens.push(await ethers.getContractAt("ERC20", contracts.BUSD));
 
-  await deployExtension(router, tokens);
+  await deployExtension(router, swapper, tokens, feeder.address);
 }
 
 main().catch(console.error);
