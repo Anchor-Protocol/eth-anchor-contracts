@@ -124,32 +124,32 @@ async function main(): Promise<void> {
   console.log(`UST => USDT ${tx.hash}`);
   await provider.waitForTransaction(tx.hash, 2);
 
-  // ust -> usdc -> busd
-  tx = await swapper
-    .connect(operator)
-    .setRoute(
-      contracts.UST,
-      contracts.BUSD,
-      [contracts.CrvUSTPool, contracts.CrvBUSDPool],
-      [contracts.UST, contracts.USDC],
-      [0, 2, 1, 3],
-      { gasPrice }
-    );
-  console.log(`Swapper.setRoute ${tx.hash}`);
-  await provider.waitForTransaction(tx.hash, 2);
+  // // ust -> usdc -> busd
+  // tx = await swapper
+  //   .connect(operator)
+  //   .setRoute(
+  //     contracts.UST,
+  //     contracts.BUSD,
+  //     [contracts.CrvUSTPool, contracts.CrvBUSDPool],
+  //     [contracts.UST, contracts.USDC],
+  //     [0, 2, 1, 3],
+  //     { gasPrice }
+  //   );
+  // console.log(`Swapper.setRoute ${tx.hash}`);
+  // await provider.waitForTransaction(tx.hash, 2);
 
-  tx = await swapper
-    .connect(operator)
-    .swapToken(
-      contracts.UST,
-      contracts.BUSD,
-      constants.WeiPerEther,
-      0,
-      operator.address,
-      { gasPrice }
-    );
-  console.log(`UST => BUSD ${tx.hash}`);
-  await provider.waitForTransaction(tx.hash, 2);
+  // tx = await swapper
+  //   .connect(operator)
+  //   .swapToken(
+  //     contracts.UST,
+  //     contracts.BUSD,
+  //     constants.WeiPerEther,
+  //     0,
+  //     operator.address,
+  //     { gasPrice }
+  //   );
+  // console.log(`UST => BUSD ${tx.hash}`);
+  // await provider.waitForTransaction(tx.hash, 2);
 }
 
 main().catch(console.error);
