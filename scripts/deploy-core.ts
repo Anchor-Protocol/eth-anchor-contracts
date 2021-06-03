@@ -30,25 +30,29 @@ async function main() {
 
   // deploy operation store
   const store = await OperationStore.connect(operator).deploy({ gasPrice });
-  console.log(`waiting ${store.address} ${store.deployTransaction.hash}`);
+  console.log(
+    `factory.deploy ${store.address} ${store.deployTransaction.hash}`
+  );
   await provider.waitForTransaction(store.deployTransaction.hash, 2);
 
   // deploy factory
   const factory = await OperationFactory.connect(operator).deploy({ gasPrice });
-  console.log(`waiting ${factory.address} ${factory.deployTransaction.hash}`);
+  console.log(
+    `factory.deploy ${factory.address} ${factory.deployTransaction.hash}`
+  );
   await provider.waitForTransaction(factory.deployTransaction.hash, 2);
 
   //======= Deploy router / proxy
   const routerImpl = await Router.connect(operator).deploy({ gasPrice });
   console.log(
-    `Router.deploy ${routerImpl.address} ${routerImpl.deployTransaction.hash}`
+    `router.deploy ${routerImpl.address} ${routerImpl.deployTransaction.hash}`
   );
   await provider.waitForTransaction(routerImpl.deployTransaction.hash, 2);
   const routerProxy = await Proxy.connect(admin).deploy(routerImpl.address, {
     gasPrice,
   });
   console.log(
-    `RouterProxy.deploy ${routerProxy.address} ${routerProxy.deployTransaction.hash}`
+    `routerProxy.deploy ${routerProxy.address} ${routerProxy.deployTransaction.hash}`
   );
   await provider.waitForTransaction(routerProxy.deployTransaction.hash, 2);
   const router = await ethers.getContractAt("Router", routerProxy.address);
@@ -58,14 +62,14 @@ async function main() {
     gasPrice,
   });
   console.log(
-    `Controller.deploy ${controllerImpl.address} ${controllerImpl.deployTransaction.hash}`
+    `controller.deploy ${controllerImpl.address} ${controllerImpl.deployTransaction.hash}`
   );
   await provider.waitForTransaction(controllerImpl.deployTransaction.hash, 2);
   const controllerProxy = await Proxy.connect(
     admin
   ).deploy(controllerImpl.address, { gasPrice });
   console.log(
-    `ControllerProxy.deploy ${controllerProxy.address} ${controllerProxy.deployTransaction.hash}`
+    `controllerProxy.deploy ${controllerProxy.address} ${controllerProxy.deployTransaction.hash}`
   );
   await provider.waitForTransaction(controllerProxy.deployTransaction.hash, 2);
   const controller = await ethers.getContractAt(
