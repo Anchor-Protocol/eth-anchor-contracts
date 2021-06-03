@@ -141,6 +141,35 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
         _;
     }
 
+    function earn() public onlyOwner _updateExchangeRate {
+        require(
+            proxyReserve < proxyOutputToken.balanceOf(address(this)),
+            "ConversionPool: not enough balance"
+        );
+
+        // UST(aUST) - UST(aToken) = earnable amount
+        uint256 pER = feeder.exchangeRateOf(address(inputToken), false);
+        uint256 pv = outputToken.totalSupply().mul(pER).div(1e18);
+
+        uint256 aER = feeder.exchangeRateOf(address(proxyInputToken), false);
+        uint256 av =
+            proxyOutputToken
+                .balanceOf(address(this))
+                .sub(proxyReserve)
+                .mul(aER)
+                .div(1e18);
+
+        if (av < pv) {
+            return;
+        }
+
+        uint256 earnAmount = av.sub(pv);
+        proxyOutputToken.safeTransfer(
+            msg.sender,
+            earnAmount.mul(1e18).div(aER)
+        );
+    }
+
     function deposit(uint256 _amount) public override {
         deposit(_amount, 0);
     }
