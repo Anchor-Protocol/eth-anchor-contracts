@@ -104,6 +104,10 @@ export async function deployExtension(
     console.log(`waiting ${pool.address} ${tx.hash}`);
     await provider.waitForTransaction(tx.hash, 2);
 
+    tx = await pool.connect(operator).setExchangeRateFeeder(feeder.address);
+    console.log(`wating ${pool.address} ${tx.hash}`);
+    await provider.waitForTransaction(tx.hash, 2);
+
     pools.push({ name: symbol, addr: pool.address });
   }
 
