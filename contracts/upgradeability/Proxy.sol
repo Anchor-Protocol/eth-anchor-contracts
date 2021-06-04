@@ -23,6 +23,20 @@
  */
 pragma solidity >=0.6.0 <0.8.0;
 
+interface IProxy {
+    function admin() external view returns (address);
+
+    function changeAdmin(address newAdmin) external;
+
+    function implementation() external view returns (address);
+
+    function upgradeTo(address newImplementation) external;
+
+    function upgradeToAndCall(address newImplementation, bytes calldata data)
+        external
+        payable;
+}
+
 /**
  * @notice Implements delegation of calls to other contracts, with proper
  * forwarding of return values and bubbling of failures.

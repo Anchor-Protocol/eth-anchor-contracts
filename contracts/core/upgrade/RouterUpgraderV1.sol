@@ -8,20 +8,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {Router} from "../Router.sol";
 import {RouterV2} from "../RouterV2.sol";
-
-interface Proxy {
-    function admin() external view returns (address);
-
-    function changeAdmin(address newAdmin) external;
-
-    function implementation() external view returns (address);
-
-    function upgradeTo(address newImplementation) external;
-
-    function upgradeToAndCall(address newImplementation, bytes calldata data)
-        external
-        payable;
-}
+import {IProxy} from "../../upgradeability/Proxy.sol";
 
 contract RouterUpgraderV1Helper {
     address private proxy;
@@ -64,7 +51,7 @@ contract RouterUpgraderV1 is Ownable {
 
     function upgrade(address proxy, address proxyAdmin) public onlyOwner {
         require(
-            address(this) == Proxy(proxy).admin(),
+            address(this) == IProxy(proxy).admin(),
             "Upgrader: unauthorized"
         );
 
@@ -77,8 +64,8 @@ contract RouterUpgraderV1 is Ownable {
         address aUST = helper.aUST();
 
         address v2Impl = address(new RouterV2());
-        Proxy(proxy).upgradeTo(v2Impl);
-        Proxy(proxy).changeAdmin(proxyAdmin);
+        IProxy(proxy).upgradeTo(v2Impl);
+        IProxy(proxy).changeAdmin(proxyAdmin);
 
         // now router v1 proxy follows routerV2 logic
         RouterV2 routerV2 = RouterV2(proxy);
