@@ -1,7 +1,17 @@
 import { utils } from "ethers";
+import { network } from "hardhat";
+import { isLocalNetwork } from "./utils";
 
 export const GAS_PRICE = utils.parseUnits("50", "gwei");
 
+let confirmation = 0;
+if (!isLocalNetwork()) {
+  confirmation = 2;
+}
+
+export const CONFIRMATION = confirmation;
+
+export type Contracts = { [name: string]: string };
 export const CONTRACTS = {
   mainnet: {
     // uniswap
@@ -31,4 +41,4 @@ export const CONTRACTS = {
     USDC: "0xe015fd30cce08bc10344d934bdb2292b1ec4bbbd",
     BUSD: "0xaae6df09ae0d322a666edc63e6a69e4b0fab6f5d",
   },
-} as { [network: string]: { [name: string]: string } };
+} as { [network: string]: Contracts };
