@@ -104,9 +104,9 @@ contract ConversionPoolV2 is IConversionPool, Context, Operator, Initializable {
         uint256 base = 1e18;
         uint256 fee = _amount.div(1000);
         if (fee <= base) {
-            return base;
+            return _amount.sub(base);
         } else {
-            return fee;
+            return _amount.sub(fee);
         }
     }
 
