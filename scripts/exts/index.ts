@@ -52,7 +52,7 @@ class Extensions {
         token: await ERC20.attach(token),
         atoken: await ERC20.attach(atoken),
         pool: await ConversionPool.attach(pool),
-        poolImpl: await ConversionPool.attach(poolImpl),
+        poolImpl: poolImpl ? await ConversionPool.attach(poolImpl) : undefined,
       };
     }
 
