@@ -16,7 +16,7 @@ export async function upgradeV1ConversionPool(
   let tx;
 
   const Upgrader = await ethers.getContractFactory("ConversionPoolUpgraderV1");
-  const upgrader = await Upgrader.connect(owner).deploy();
+  const upgrader = await Upgrader.connect(owner).deploy({ gasPrice });
   ({ deployTransaction: tx } = upgrader);
   console.log(`upgrader.deploy. ${upgrader.address}, ${tx.hash}`);
   await provider.waitForTransaction(tx.hash, CONFIRMATION);

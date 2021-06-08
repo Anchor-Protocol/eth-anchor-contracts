@@ -1,9 +1,9 @@
 import { BigNumber, Contract } from "ethers";
 import { ethers, network } from "hardhat";
 
-import { CONTRACTS, CONFIRMATION, GAS_PRICE, Contracts } from "./contracts";
-import { deployCore } from "./core";
-import { deployExtension, FeederConfig } from "./exts";
+import { CONTRACTS, Contracts } from "./contracts";
+import { Core, deployCore } from "./core";
+import { deployExtension, Extensions, FeederConfig } from "./exts";
 import { upgradeV1 } from "./upgrade/v1";
 import { deployExternalContracts, isLocalNetwork } from "./utils";
 
