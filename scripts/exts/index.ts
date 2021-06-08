@@ -1,5 +1,6 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Contract } from "ethers";
+import { ethers } from "hardhat";
 
 import { Contracts } from "../contracts";
 import { verify } from "../utils";
@@ -34,6 +35,35 @@ class Extensions {
       feeder: this.feeder.address,
       ...poolAddrs,
     };
+  }
+
+  static async fromContracts(contracts: {
+    [name: string]: any;
+  }): Promise<Extensions> {
+    const ERC20 = await ethers.getContractFactory("ERC20");
+    const ConversionPool = await ethers.getContractFactory("ConversionPool");
+
+    let pools: { [symbol: string]: any } = {};
+    for await (const [symbol, poolAddrs] of Object.entries(contracts.pools)) {
+      const { token, atoken, pool, poolImpl } = poolAddrs as {
+        [name: string]: string;
+      };
+      pools[symbol] = {
+        token: await ERC20.attach(token),
+        atoken: await ERC20.attach(atoken),
+        pool: await ConversionPool.attach(pool),
+        poolImpl: await ConversionPool.attach(poolImpl),
+      };
+    }
+
+    return Object.assign(new Extensions(), {
+      swapper: await ethers.getContractAt("ISwapper", contracts.swapper),
+      feeder: await ethers.getContractAt(
+        "ExchangeRateFeeder",
+        contracts.feeder
+      ),
+      pools,
+    }) as any;
   }
 }
 

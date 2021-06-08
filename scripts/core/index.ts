@@ -29,6 +29,26 @@ class Core {
       return acc;
     }, {} as { [name: string]: any });
   }
+
+  static async fromContracts(contracts: Contracts): Promise<Core> {
+    return Object.assign(new Core(), {
+      router: await ethers.getContractAt("Router", contracts.router),
+      routerImpl: await ethers.getContractAt("Router", contracts.routerImpl),
+      controller: await ethers.getContractAt(
+        "Controller",
+        contracts.controller
+      ),
+      controllerImpl: await ethers.getContractAt(
+        "Controller",
+        contracts.controllerImpl
+      ),
+      factory: await ethers.getContractAt(
+        "OperationFactory",
+        contracts.factory
+      ),
+      store: await ethers.getContractAt("OperationStore", contracts.store),
+    }) as any;
+  }
 }
 
 const HASH1 =
