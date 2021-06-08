@@ -1,5 +1,5 @@
 export const ContractArchive = {
-  mainnet: {
+  mainnetV2: {
     core: {
       router: "0xcEF9E167d3f8806771e9bac1d4a0d568c39a9388",
       controller: "0x0E584DFd1A44fDa5cE3390BAb829691feA2EF535",
