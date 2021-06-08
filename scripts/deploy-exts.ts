@@ -84,10 +84,7 @@ export async function deployExtension(
     );
     await provider.waitForTransaction(poolProxy.deployTransaction.hash, 2);
 
-    const pool = await ethers.getContractAt(
-      "ConversionPool",
-      poolProxy.address
-    );
+    const pool = await Pool.attach(poolProxy.address);
 
     tx = await pool
       .connect(operator)

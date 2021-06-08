@@ -55,7 +55,7 @@ async function main() {
     `routerProxy.deploy ${routerProxy.address} ${routerProxy.deployTransaction.hash}`
   );
   await provider.waitForTransaction(routerProxy.deployTransaction.hash, 2);
-  const router = await ethers.getContractAt("Router", routerProxy.address);
+  const router = await Router.attach(routerProxy.address);
 
   //======= Deploy controller / proxy
   const controllerImpl = await Controller.connect(operator).deploy({
@@ -72,10 +72,7 @@ async function main() {
     `controllerProxy.deploy ${controllerProxy.address} ${controllerProxy.deployTransaction.hash}`
   );
   await provider.waitForTransaction(controllerProxy.deployTransaction.hash, 2);
-  const controller = await ethers.getContractAt(
-    "Controller",
-    controllerProxy.address
-  );
+  const controller = await Controller.attach(controllerProxy.address);
 
   // ACL setting - factory
   {
