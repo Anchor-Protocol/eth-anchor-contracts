@@ -64,7 +64,7 @@ const predefinedRoutes = (
       {
         pool: contracts.CrvBUSDPool,
         bridge: contracts.BUSD,
-        indexes: [3, 1],
+        indexes: [0, 2],
       },
       {
         pool: contracts.CrvUSTPool,

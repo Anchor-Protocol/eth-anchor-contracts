@@ -2,7 +2,7 @@ import { utils } from "ethers";
 import { network } from "hardhat";
 import { isLocalNetwork } from "./utils";
 
-export const GAS_PRICE = utils.parseUnits("50", "gwei");
+export const GAS_PRICE = utils.parseUnits("70", "gwei");
 
 let confirmation = 0;
 if (!isLocalNetwork()) {

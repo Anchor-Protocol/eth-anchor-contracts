@@ -1,7 +1,7 @@
 import chai, { expect } from "chai";
 import { ethers, network } from "hardhat";
 import { solidity } from "ethereum-waffle";
-import { constants, Contract } from "ethers";
+import { BigNumber, constants, Contract } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { CONTRACTS } from "../contracts";
 import { deployCurveSwapper, routeOf } from "../exts";
@@ -61,7 +61,13 @@ describe("Router", () => {
       await expect(
         swapper
           .connect(owner)
-          .swapToken(contracts.DAI, contracts.UST, amount, 0, owner.address)
+          .swapToken(
+            contracts.DAI,
+            contracts.UST,
+            amount,
+            BigNumber.from(amount).mul(98).div(100),
+            owner.address
+          )
       ).not.to.reverted;
     }
   });
@@ -76,9 +82,9 @@ describe("Router", () => {
       .connect(owner)
       .swapToken(
         BUSD.address,
-        USDC.address,
+        UST.address,
         constants.WeiPerEther.mul(100),
-        0,
+        constants.WeiPerEther.mul(98),
         owner.address
       );
   });
