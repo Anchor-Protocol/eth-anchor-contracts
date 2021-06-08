@@ -78,11 +78,11 @@ async function deployExtension(
     tokens
   );
 
-  const { pool, atoken } = Object.values(pools)[0];
+  const { pool, poolImpl, atoken } = Object.values(pools)[0];
   if (!isLocal) {
     await verify(
       pool.address,
-      [],
+      [poolImpl.address],
       "contracts/upgradeability/SimpleProxy.sol:SimpleProxy"
     );
     await verify(atoken.address, [await atoken.name(), await atoken.symbol()]);
