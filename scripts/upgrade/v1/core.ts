@@ -22,10 +22,13 @@ export async function upgradeV1Router(
   const Proxy = await ethers.getContractFactory("SimpleProxy");
   const proxy = await Proxy.attach(router);
 
+  let tx;
+
   const Upgrader = await ethers.getContractFactory("RouterUpgraderV1");
   const upgrader = await Upgrader.connect(owner).deploy();
-
-  let tx;
+  ({ deployTransaction: tx } = upgrader);
+  console.log(`upgrader.deploy. ${upgrader.address}, ${tx.hash}`);
+  await provider.waitForTransaction(tx.hash, CONFIRMATION);
 
   tx = await aUST
     .connect(owner)
