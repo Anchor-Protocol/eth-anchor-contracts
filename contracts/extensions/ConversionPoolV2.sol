@@ -166,7 +166,13 @@ contract ConversionPoolV2 is IConversionPool, Context, Operator, Initializable {
         IConversionRouterV2(optRouter).depositStable(ust);
 
         uint256 pER = feeder.exchangeRateOf(address(inputToken), false);
-        outputToken.mint(_msgSender(), deductFee(ust).mul(1e18).div(pER));
+        uint256 aER = feeder.exchangeRateOf(address(proxyInputToken), false);
+
+        outputToken.mint(
+            _msgSender(),
+            /* deductFee(ustAmount * (1/aER)) * aER/pER */
+            deductFee(ust.mul(1e18).div(aER)).mul(aER).div(pER) // aDAI amount without tax
+        );
     }
 
     function redeem(uint256 _amount) public override _updateExchangeRate {
