@@ -9,18 +9,22 @@ async function upgradeV1(
   contracts: Contracts,
   owner: SignerWithAddress,
   admin: SignerWithAddress,
-  router: Contract,
-  pools: Contract[]
+  router?: Contract,
+  pools?: Contract[]
 ) {
-  await upgradeV1Router(
-    contracts.UST,
-    contracts.aUST,
-    router.address,
-    owner,
-    admin
-  );
-  for await (const pool of pools) {
-    await upgradeV1ConversionPool(pool.address, owner, admin);
+  if (router) {
+    await upgradeV1Router(
+      contracts.UST,
+      contracts.aUST,
+      router.address,
+      owner,
+      admin
+    );
+  }
+  if (pools) {
+    for await (const pool of pools) {
+      await upgradeV1ConversionPool(pool.address, owner, admin);
+    }
   }
 }
 

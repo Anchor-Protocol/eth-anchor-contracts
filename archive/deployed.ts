@@ -25,6 +25,11 @@ export const ContractArchive = {
           atoken: "0x94eAd8f528A3aF425de14cfdDA727B218915687C",
           pool: "0x53fD7e8fEc0ac80cf93aA872026EadF50cB925f3",
         },
+        busd: {
+          token: "0x4fabb145d64652a948d72533023f6e7a623c7c53",
+          atoken: "0x5A6a33117EcBc6EA38B3a140F3E20245052CC647",
+          pool: "0x242876001d04D5782aEE4f69fB26Ee6264Cc1d21",
+        },
       },
     },
   },
