@@ -33,15 +33,16 @@ class Core {
   static async fromContracts(contracts: Contracts): Promise<Core> {
     return Object.assign(new Core(), {
       router: await ethers.getContractAt("Router", contracts.router),
-      routerImpl: await ethers.getContractAt("Router", contracts.routerImpl),
+      routerImpl: contracts.routerImpl
+        ? await ethers.getContractAt("Router", contracts.routerImpl)
+        : undefined,
       controller: await ethers.getContractAt(
         "Controller",
         contracts.controller
       ),
-      controllerImpl: await ethers.getContractAt(
-        "Controller",
-        contracts.controllerImpl
-      ),
+      controllerImpl: contracts.controllerImpl
+        ? await ethers.getContractAt("Controller", contracts.controllerImpl)
+        : undefined,
       factory: await ethers.getContractAt(
         "OperationFactory",
         contracts.factory

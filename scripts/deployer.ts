@@ -1,9 +1,10 @@
 import { BigNumber, Contract } from "ethers";
 import { ethers, network } from "hardhat";
+import { ContractArchive } from "../archive/deployed";
 
 import { CONTRACTS, Contracts } from "./contracts";
 import { Core, deployCore } from "./core";
-import { deployExtension, Extensions, FeederConfig } from "./exts";
+import { deployExtension, Extensions, FeederConfig, routeOf } from "./exts";
 import { upgradeV1 } from "./upgrade/v1";
 import { deployExternalContracts, isLocalNetwork } from "./utils";
 
@@ -15,7 +16,10 @@ async function main() {
   if (!isLocal) {
     contracts = CONTRACTS[network.name];
   } else {
-    contracts = await deployExternalContracts(owner);
+    contracts =
+      network.name === "mainnet_fork"
+        ? CONTRACTS["mainnet"]
+        : await deployExternalContracts(owner);
   }
 
   // ============================= core
@@ -44,16 +48,16 @@ async function main() {
     core.router,
     tokens,
     /* ========== curve ========== */
-    // {
-    //   routes: [
-    //     routeOf(contracts, "DAI"),
-    //     routeOf(contracts, "USDC"),
-    //     routeOf(contracts, "USDT"),
-    //     routeOf(contracts, "BUSD"),
-    //   ],
-    // },
+    {
+      routes: [
+        routeOf(contracts, "DAI"),
+        routeOf(contracts, "USDC"),
+        routeOf(contracts, "USDT"),
+        routeOf(contracts, "BUSD"),
+      ],
+    },
     /* ========== uniswap ========== */
-    { uniswapFactory: contracts.UniFactory },
+    // { uniswapFactory: contracts.UniFactory },
     feederConfig,
     isLocal
   );

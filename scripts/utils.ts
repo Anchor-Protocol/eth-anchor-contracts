@@ -94,7 +94,9 @@ export async function deployExternalContracts(
 }
 
 export function isLocalNetwork(): boolean {
-  return ["local", "hardhat", "localhost"].includes(network.name);
+  return ["local", "hardhat", "localhost", "mainnet_fork"].includes(
+    network.name
+  );
 }
 
 export async function verify(

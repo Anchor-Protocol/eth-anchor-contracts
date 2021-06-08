@@ -101,12 +101,18 @@ export async function deployCurveSwapper(
   await provider.waitForTransaction(tx.hash, CONFIRMATION);
 
   for await (const { from, to, crv } of config.routes) {
-    const { pools, bridges, indexes } = crv.reduce((acc, c) => {
-      acc.pools.push(c.pool);
-      acc.bridges.push(c.bridge);
-      acc.indexes.push(...c.indexes);
-      return acc;
-    }, {} as { pools: string[]; bridges: string[]; indexes: number[] });
+    const { pools, bridges, indexes } = crv.reduce(
+      (acc, c) => ({
+        pools: [...acc.pools, c.pool],
+        bridges: [...acc.bridges, c.bridge],
+        indexes: [...acc.indexes, ...c.indexes],
+      }),
+      { pools: [], bridges: [], indexes: [] } as {
+        pools: string[];
+        bridges: string[];
+        indexes: number[];
+      }
+    );
 
     tx = await swapper
       .connect(owner)

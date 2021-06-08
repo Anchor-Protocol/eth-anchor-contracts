@@ -2,9 +2,7 @@ export const ContractArchive = {
   mainnet: {
     core: {
       router: "0xcEF9E167d3f8806771e9bac1d4a0d568c39a9388",
-      routerImpl: "0x39Ef3F37F06871B3824110475fbBD2E55BD4d9e4",
       controller: "0x0E584DFd1A44fDa5cE3390BAb829691feA2EF535",
-      controllerImpl: "0xFE7a43E0F44cFEbf3A3097D13e1D3Db55eDC9Ef1",
       factory: "0x70969687F4F2115bD1569ED96281c934f7cA2Cc4",
       store: "0x280ac4F337A11D35a7f03e8b42935b34c94F12cf",
     },
@@ -16,19 +14,16 @@ export const ContractArchive = {
           token: "0x6b175474e89094c44da98b954eedeac495271d0f",
           atoken: "0x23afFce94d2A6736DE456a25eB8Cc96612Ca55CA",
           pool: "0x83dd0a8E6F3A51c4cCA6c3f95721f9926DD9e7E7",
-          poolImpl: "0x1937e7Fa692098ABf2f1fa7837CD79077F5f8e22",
         },
         usdt: {
           token: "0xdac17f958d2ee523a2206206994597c13d831ec7",
           atoken: "0x54E076dBa023251854f4C29ea750566528734B2d",
           pool: "0xEd8C41774E71f9BF0c2C223d3a3554F496656D16",
-          poolImpl: "0x138B57860d28EB1681b4064069f9720e3FdD92E5",
         },
         usdc: {
           token: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
           atoken: "0x94eAd8f528A3aF425de14cfdDA727B218915687C",
           pool: "0x53fD7e8fEc0ac80cf93aA872026EadF50cB925f3",
-          poolImpl: "0xF67872523A4c9017335704A16afF09A53f2282Dd",
         },
       },
     },
@@ -36,9 +31,7 @@ export const ContractArchive = {
   ropstenV2: {
     core: {
       router: "0x7537aC093cE1315BCE08bBF0bf6f9b86B7475008",
-      routerImpl: "0x47148B3eCCF5eE87A6E72b482cAB31eEA18b1372",
       controller: "0xd90C5f984594528A578b950b8a1Fb66CC6A463A8",
-      controllerImpl: "0xF5103cD3c833c9BDC4f67074f1c7aC53FBDadc32",
       factory: "0x8775c78b779EDaFD0E5D6654f92C5664D78FD28e",
       store: "0x49587861DF21C77cE8f3CD6831A3B663a4Dd1c76",
     },
