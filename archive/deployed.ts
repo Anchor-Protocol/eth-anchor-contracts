@@ -7,7 +7,7 @@ export const ContractArchive = {
       store: "0x280ac4F337A11D35a7f03e8b42935b34c94F12cf",
     },
     exts: {
-      swapper: "0xf562A9500E3d75C2908FA634525E5dE775Ee858B",
+      swapper: "0x7ea5271a0f4EA160934553F4F94EC01F8B3299bD",
       feeder: "0xd7c4f5903De8A256a1f535AC71CeCe5750d5197a",
       pools: {
         dai: {
