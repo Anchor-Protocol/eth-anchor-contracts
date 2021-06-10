@@ -97,6 +97,8 @@ contract CurveSwapper is ISwapper, Ownable {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), _amount);
 
         Route memory route = routes[_from][_to];
+        require(route.pools.length > 0, "CurveSwapper: ROUTE_NOT_SUPPORTED");
+
         uint256 amount = _amount;
         for (uint256 i = 0; i < route.pools.length; i++) {
             amount = ICurve(route.pools[i]).exchange_underlying(
