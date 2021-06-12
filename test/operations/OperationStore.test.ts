@@ -39,7 +39,8 @@ describe("OperationStore", () => {
   beforeEach("deploy contract", async () => {
     const OperationStore = await ethers.getContractFactory("OperationStore");
     store = await OperationStore.connect(owner).deploy();
-    await store.connect(owner).transferOperator(operator.address);
+    await store.connect(owner).transferRouter(operator.address);
+    await store.connect(owner).transferController(operator.address);
   });
 
   describe("lifecycle", () => {
@@ -165,9 +166,9 @@ describe("OperationStore", () => {
           });
 
           it("=> dealloc", async () => {
-            await expect(store.connect(owner).deallocate(TEST_ADDR))
+            await expect(store.connect(operator).deallocate(TEST_ADDR))
               .to.emit(store, "OperationDeallocated")
-              .withArgs(owner.address, TEST_ADDR);
+              .withArgs(operator.address, TEST_ADDR);
             expect(await store.getStatusOf(TEST_ADDR)).to.eq(
               Status.DEALLOCATED
             );

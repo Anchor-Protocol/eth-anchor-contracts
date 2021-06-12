@@ -49,7 +49,6 @@ describe("ExchangeRateFeeder", () => {
       "ExchangeRateFeeder"
     );
     feeder = await ExchangeRateFeeder.connect(owner).deploy();
-    await feeder.connect(owner).transferOperator(operator.address);
     await feeder
       .connect(owner)
       .addToken(
@@ -68,7 +67,7 @@ describe("ExchangeRateFeeder", () => {
       );
   });
 
-  it("controll", async () => {
+  it("control", async () => {
     let tx, block;
 
     tx = await feeder
@@ -116,12 +115,12 @@ describe("ExchangeRateFeeder", () => {
       }
 
       const exchangeRateA = utils.formatEther(
-        await feeder.exchangeRateOf(tokenA.address)
+        await feeder.exchangeRateOf(tokenA.address, false)
       );
       expect(Math.round(Number(exchangeRateA) * 100)).to.eq(115); // 1.15%;
 
       const exchangeRateB = utils.formatEther(
-        await feeder.exchangeRateOf(tokenB.address)
+        await feeder.exchangeRateOf(tokenB.address, false)
       );
       expect(Math.round(Number(exchangeRateB) * 100)).to.eq(120); // 1.20%
     });

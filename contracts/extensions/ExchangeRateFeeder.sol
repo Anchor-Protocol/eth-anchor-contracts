@@ -2,8 +2,7 @@
 pragma solidity >=0.6.0 <0.8.0;
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
-
-import {Operator} from "../utils/Operator.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 interface IExchangeRateFeeder {
     event RateUpdated(
@@ -24,7 +23,10 @@ interface IExchangeRateFeeder {
         uint256 lastUpdatedAt;
     }
 
-    function exchangeRateOf(address _token) external view returns (uint256);
+    function exchangeRateOf(address _token, bool _simulate)
+        external
+        view
+        returns (uint256);
 
     function update(address _token) external;
 }
@@ -42,12 +44,10 @@ interface IExchangeRateFeederGov {
     function stopUpdate(address[] memory _tokens) external;
 }
 
-contract ExchangeRateFeeder is IExchangeRateFeeder, Operator {
+contract ExchangeRateFeeder is IExchangeRateFeeder, Ownable {
     using SafeMath for uint256;
 
     mapping(address => Token) public tokens;
-
-    // 1.15 => 1000015954686906531
 
     function addToken(
         address _token,
@@ -77,16 +77,26 @@ contract ExchangeRateFeeder is IExchangeRateFeeder, Operator {
         }
     }
 
-    function exchangeRateOf(address _token)
+    function exchangeRateOf(address _token, bool _simulate)
         public
         view
         override
         returns (uint256)
     {
-        return tokens[_token].exchangeRate;
+        uint256 exchangeRate = tokens[_token].exchangeRate;
+        if (_simulate) {
+            Token memory token = tokens[_token];
+
+            uint256 elapsed = block.timestamp.sub(token.lastUpdatedAt);
+            uint256 updateCount = elapsed.div(token.period);
+            for (uint256 i = 0; i < updateCount; i++) {
+                exchangeRate = exchangeRate.mul(token.weight).div(1e18);
+            }
+        }
+        return exchangeRate;
     }
 
-    function update(address _token) public override onlyGranted {
+    function update(address _token) public override {
         Token memory token = tokens[_token];
 
         require(token.status == Status.RUNNING, "Feeder: invalid status");
@@ -101,9 +111,7 @@ contract ExchangeRateFeeder is IExchangeRateFeeder, Operator {
         for (uint256 i = 0; i < updateCount; i++) {
             token.exchangeRate = token.exchangeRate.mul(token.weight).div(1e18);
         }
-        token.lastUpdatedAt = token.lastUpdatedAt.add(
-            token.period.mul(updateCount)
-        );
+        token.lastUpdatedAt = block.timestamp;
 
         tokens[_token] = token;
 

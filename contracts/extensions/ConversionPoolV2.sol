@@ -7,28 +7,14 @@ import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
-import {
-    IUniswapV2Pair
-} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
-
 import {IExchangeRateFeeder} from "./ExchangeRateFeeder.sol";
-import {IRouter, IConversionRouter} from "../core/Router.sol";
+import {IConversionPool} from "./ConversionPool.sol";
+import {IConversionRouterV2} from "../core/RouterV2.sol";
 import {Operator} from "../utils/Operator.sol";
 import {ISwapper} from "../swapper/ISwapper.sol";
 import {IERC20Controlled, ERC20Controlled} from "../utils/ERC20Controlled.sol";
-import {UniswapV2Library} from "../libraries/UniswapV2Library.sol";
 
-interface IConversionPool {
-    function deposit(uint256 _amount) external;
-
-    function deposit(uint256 _amount, uint256 _minAmountOut) external;
-
-    function redeem(uint256 _amount) external;
-
-    function redeem(uint256 _amount, uint256 _minAmountOut) external;
-}
-
-contract ConversionPool is IConversionPool, Context, Operator, Initializable {
+contract ConversionPoolV2 is IConversionPool, Context, Operator, Initializable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using SafeERC20 for IERC20Controlled;
@@ -51,30 +37,6 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
     // flags
     bool public isDepositAllowed = true;
     bool public isRedemptionAllowed = true;
-
-    function initialize(
-        // ===== tokens
-        string memory _outputTokenName,
-        string memory _outputTokenSymbol,
-        address _inputToken,
-        address _proxyInputToken,
-        address _proxyOutputToken,
-        // ===== others
-        address _optRouter,
-        address _swapper,
-        address _exchangeRateFeeder
-    ) public initializer {
-        inputToken = IERC20(_inputToken);
-        outputToken = new ERC20Controlled(_outputTokenName, _outputTokenSymbol);
-
-        proxyInputToken = IERC20(_proxyInputToken);
-        proxyOutputToken = IERC20(_proxyOutputToken);
-
-        setRole(msg.sender, msg.sender);
-        setSwapper(_swapper);
-        setOperationRouter(_optRouter);
-        setExchangeRateFeeder(_exchangeRateFeeder);
-    }
 
     // governance
 
@@ -138,6 +100,16 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
         _;
     }
 
+    function deductFee(uint256 _amount) internal pure returns (uint256) {
+        uint256 base = 1e18;
+        uint256 fee = _amount.div(1000);
+        if (fee <= base) {
+            return _amount.sub(base);
+        } else {
+            return _amount.sub(fee);
+        }
+    }
+
     function earn() public onlyOwner _updateExchangeRate {
         require(
             proxyReserve < proxyOutputToken.balanceOf(address(this)),
@@ -191,10 +163,16 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
 
         // depositStable
         uint256 ust = proxyInputToken.balanceOf(address(this));
-        IRouter(optRouter).depositStable(ust);
+        IConversionRouterV2(optRouter).depositStable(ust);
 
         uint256 pER = feeder.exchangeRateOf(address(inputToken), false);
-        outputToken.mint(_msgSender(), ust.mul(1e18).div(pER));
+        uint256 aER = feeder.exchangeRateOf(address(proxyInputToken), false);
+
+        outputToken.mint(
+            _msgSender(),
+            /* deductFee(ustAmount * (1/aER)) * aER/pER */
+            deductFee(ust.mul(1e18).div(aER)).mul(aER).div(pER) // aDAI amount without tax
+        );
     }
 
     function redeem(uint256 _amount) public override _updateExchangeRate {
@@ -206,7 +184,7 @@ contract ConversionPool is IConversionPool, Context, Operator, Initializable {
         uint256 out = _amount.mul(pER).div(1e18);
 
         uint256 aER = feeder.exchangeRateOf(address(proxyInputToken), false);
-        IConversionRouter(optRouter).redeemStable(
+        IConversionRouterV2(optRouter).redeemStable(
             _msgSender(),
             out.mul(1e18).div(aER),
             address(swapper),

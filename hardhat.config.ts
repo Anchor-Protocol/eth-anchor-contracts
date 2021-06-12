@@ -8,7 +8,15 @@ import { Networks, EtherscanAPIKey } from "./local.config";
 export default {
   default: "hardhat",
   networks: {
-    hardhat: {},
+    hardhat: {
+      mining: {
+        auto: true,
+        interval: 1000,
+      },
+    },
+    local: {
+      url: "http://localhost:8545",
+    },
     ...Networks,
   },
   solidity: {

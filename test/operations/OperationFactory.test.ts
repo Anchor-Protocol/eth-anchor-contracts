@@ -42,22 +42,39 @@ describe("OperationFactory", () => {
       .connect(owner)
       .initialize(
         encodeParameters(
-          ["address", "bytes32", "address", "address"],
-          [controller.address, hash1, owner.address, owner.address]
+          ["address", "address", "bytes32", "address", "address"],
+          [
+            controller.address,
+            controller.address,
+            hash1,
+            owner.address,
+            owner.address,
+          ]
         )
       );
 
     const Factory = await ethers.getContractFactory("OperationFactory");
     const factory = await Factory.connect(owner).deploy();
-    await factory.connect(owner).transferOperator(controller.address);
+    await factory.connect(owner).transferRouter(controller.address);
+    await factory.connect(owner).transferController(controller.address);
 
-    await factory.connect(owner).setStandardOperation(0, operation.address);
-    expect(await factory.standards(0)).to.eq(operation.address);
+    await factory
+      .connect(owner)
+      .pushStandardOperation(
+        controller.address,
+        controller.address,
+        operation.address
+      );
+
+    const standard = await factory.standards(0);
+    expect(standard.router).to.eq(controller.address);
+    expect(standard.controller).to.eq(controller.address);
+    expect(standard.operation).to.eq(operation.address);
 
     await factory.connect(owner).pushTerraAddresses([hash2]);
     expect(await factory.fetchNextTerraAddress()).to.eq(hash2);
 
-    const tx = await factory.connect(controller).build(0, controller.address);
+    const tx = await factory.connect(controller).build(0);
     const receipt = await provider.getTransactionReceipt(tx.hash);
     const desc = factory.interface.parseLog(receipt.logs[0]);
 

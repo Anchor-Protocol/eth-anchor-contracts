@@ -4,12 +4,16 @@ pragma solidity >=0.6.0 <0.8.0;
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
-import {Operator} from "../utils/Operator.sol";
+import {OperationACL} from "./OperationACL.sol";
 
 interface OperationStandard {
     function initialize(bytes memory) external;
 
-    function initPayload(address, bytes32) external view returns (bytes memory);
+    function initPayload(
+        address,
+        address,
+        bytes32
+    ) external view returns (bytes memory);
 }
 
 interface IOperationFactory {
@@ -19,28 +23,41 @@ interface IOperationFactory {
         bytes32 indexed terraAddress
     );
 
+    struct Standard {
+        address router;
+        address controller;
+        address operation;
+    }
+
     function pushTerraAddresses(bytes32[] memory _addrs) external;
 
     function fetchAddressBufferSize() external view returns (uint256);
 
     function fetchNextTerraAddress() external view returns (bytes32);
 
-    function build(uint256 _optId, address _controller)
-        external
-        returns (address);
+    function build(uint256 _optId) external returns (address);
 }
 
-contract OperationFactory is IOperationFactory, Operator {
+contract OperationFactory is IOperationFactory, OperationACL {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     // standard operations
-    mapping(uint256 => address) public standards;
+    uint256 public standardIndex = 0;
+    mapping(uint256 => Standard) public standards;
 
-    function setStandardOperation(uint256 _optId, address _operation)
-        public
-        onlyOwner
-    {
-        standards[_optId] = _operation;
+    function pushStandardOperation(
+        address _router,
+        address _controller,
+        address _operation
+    ) public onlyOwner returns (uint256) {
+        uint256 optStdId = standardIndex;
+        standards[optStdId] = Standard({
+            router: _router,
+            controller: _controller,
+            operation: _operation
+        });
+        standardIndex += 1;
+        return optStdId;
     }
 
     // terra address buffer
@@ -70,22 +87,25 @@ contract OperationFactory is IOperationFactory, Operator {
         return addr;
     }
 
-    function build(uint256 _optId, address _controller)
+    function build(uint256 _optId)
         public
         override
         onlyGranted
         returns (address)
     {
         bytes32 terraAddr = fetchTerraAddress();
-        address instance = Clones.clone(standards[_optId]);
+        Standard memory std = standards[_optId];
+
+        address instance = Clones.clone(std.operation);
         bytes memory payload =
-            OperationStandard(standards[_optId]).initPayload(
-                _controller,
+            OperationStandard(std.operation).initPayload(
+                std.router,
+                std.controller,
                 terraAddr
-            ); // TODO: make terraAddress buffer
+            );
         OperationStandard(instance).initialize(payload);
 
-        emit ContractDeployed(instance, _controller, terraAddr);
+        emit ContractDeployed(instance, std.controller, terraAddr);
 
         return instance;
     }

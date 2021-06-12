@@ -109,8 +109,14 @@ describe("Operation", () => {
       .connect(owner)
       .initialize(
         encodeParameters(
-          ["address", "bytes32", "address", "address"],
-          [controller.address, hash1, wUST.address, aUST.address]
+          ["address", "address", "bytes32", "address", "address"],
+          [
+            controller.address,
+            controller.address,
+            hash1,
+            wUST.address,
+            aUST.address,
+          ]
         )
       );
 
@@ -127,10 +133,18 @@ describe("Operation", () => {
   });
 
   it("initialize", async () => {
-    expect(await operation.initPayload(controller.address, hash2)).to.eq(
+    expect(
+      await operation.initPayload(controller.address, controller.address, hash2)
+    ).to.eq(
       encodeParameters(
-        ["address", "bytes32", "address", "address"],
-        [controller.address, hash2, wUST.address, aUST.address]
+        ["address", "address", "bytes32", "address", "address"],
+        [
+          controller.address,
+          controller.address,
+          hash2,
+          wUST.address,
+          aUST.address,
+        ]
       )
     );
   });
@@ -197,7 +211,7 @@ describe("Operation", () => {
       // ========================= FINISH
       await aUST.connect(owner).transfer(operation.address, amount); // fulfill condition
 
-      await expect(operation.connect(controller).finish())
+      await expect(operation.connect(controller).functions["finish()"]())
         .to.emit(operation, "FinishDeposit")
         .withArgs(controller.address, amount);
 
@@ -244,7 +258,7 @@ describe("Operation", () => {
       // ========================= FINISH
       await wUST.connect(owner).transfer(operation.address, amount); // fulfill condition
 
-      await expect(operation.connect(controller).finish())
+      await expect(operation.connect(controller).functions["finish()"]())
         .to.emit(operation, "FinishRedemption")
         .withArgs(controller.address, amount);
 
@@ -291,7 +305,7 @@ describe("Operation", () => {
       // ========================= FINISH
       await wUST.connect(owner).transfer(operation.address, amount); // fulfill condition
 
-      await expect(operation.connect(controller).finish())
+      await expect(operation.connect(controller).functions["finish()"]())
         .to.emit(operation, "FinishRedemption")
         .withArgs(controller.address, amount);
 
@@ -309,7 +323,10 @@ describe("Operation", () => {
       await expect(
         operation
           .connect(controller)
-          .emergencyWithdraw(wUST.address, controller.address)
+          .functions["emergencyWithdraw(address,address)"](
+            wUST.address,
+            controller.address
+          )
       ).to.revertedWith("Operation: not an emergency");
 
       await operation.connect(controller).halt();
@@ -322,7 +339,10 @@ describe("Operation", () => {
 
       await operation
         .connect(controller)
-        .emergencyWithdraw(wUST.address, controller.address);
+        .functions["emergencyWithdraw(address,address)"](
+          wUST.address,
+          controller.address
+        );
       expect(await wUST.balanceOf(controller.address)).to.eq(amount);
 
       await operation.connect(controller).recover();
@@ -356,12 +376,18 @@ describe("Operation", () => {
       await expect(
         operation
           .connect(controller)
-          .emergencyWithdraw(aUST.address, controller.address)
+          .functions["emergencyWithdraw(address,address)"](
+            aUST.address,
+            controller.address
+          )
       ).to.revertedWith("Operation: withdrawal rejected");
 
       await operation
         .connect(controller)
-        .emergencyWithdraw(wUST.address, controller.address);
+        .functions["emergencyWithdraw(address,address)"](
+          wUST.address,
+          controller.address
+        );
       expect(await wUST.balanceOf(controller.address)).to.eq(amount);
 
       await aUST.connect(owner).transfer(operation.address, amount);
@@ -373,7 +399,7 @@ describe("Operation", () => {
       );
       expect(currentStatus.status).to.eq(1);
 
-      await operation.connect(controller).finish();
+      await operation.connect(controller).functions["finish()"]();
       expect(await aUST.balanceOf(controller.address)).to.eq(amount.mul(2));
     });
   });

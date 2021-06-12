@@ -2,13 +2,20 @@
 pragma solidity >=0.6.0 <0.8.0;
 pragma experimental ABIEncoderV2;
 
-contract Operator {
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+
+contract Operator is Context {
     address public owner;
     address public operator;
 
     constructor() {
-        owner = msg.sender;
-        operator = msg.sender;
+        owner = _msgSender();
+        operator = _msgSender();
+    }
+
+    function setRole(address _owner, address _operator) internal virtual {
+        owner = _owner;
+        operator = _operator;
     }
 
     modifier onlyOwner {
@@ -18,7 +25,7 @@ contract Operator {
     }
 
     function checkOwner() public view returns (bool) {
-        return msg.sender == owner;
+        return _msgSender() == owner;
     }
 
     modifier onlyOperator {
@@ -28,7 +35,7 @@ contract Operator {
     }
 
     function checkOperator() public view returns (bool) {
-        return msg.sender == operator;
+        return _msgSender() == operator;
     }
 
     modifier onlyGranted {

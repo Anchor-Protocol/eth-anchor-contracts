@@ -5,8 +5,8 @@ pragma experimental ABIEncoderV2;
 import {EnumerableSet} from "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import {StdQueue} from "../utils/Queue.sol";
-import {Operator} from "../utils/Operator.sol";
 import {IOperation} from "./Operation.sol";
+import {OperationACL} from "./OperationACL.sol";
 
 interface IOperationStore {
     // Events
@@ -80,12 +80,13 @@ interface IOperationStore {
 
     function deallocate(address _opt) external;
 
+    // queue
     function flush(Queue queue, uint256 _amount) external;
 
-    function flushAll(uint256 _amount) external;
+    function flushAll(uint256 _amount) external; // running, failed
 }
 
-contract OperationStore is IOperationStore, Operator {
+contract OperationStore is IOperationStore, OperationACL {
     using StdQueue for StdQueue.AddressQueue;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -109,7 +110,9 @@ contract OperationStore is IOperationStore, Operator {
         override
         returns (address)
     {
-        if (_queue == Queue.RUNNING) {
+        if (_queue == Queue.IDLE) {
+            return optIdle.at(_index);
+        } else if (_queue == Queue.RUNNING) {
             return optRunning.getItemAt(_index);
         } else if (_queue == Queue.STOPPED) {
             return optStopped.getItemAt(_index);
@@ -124,7 +127,9 @@ contract OperationStore is IOperationStore, Operator {
         override
         returns (uint256)
     {
-        if (_queue == Queue.RUNNING) {
+        if (_queue == Queue.IDLE) {
+            return optIdle.length();
+        } else if (_queue == Queue.RUNNING) {
             return optRunning.length();
         } else if (_queue == Queue.STOPPED) {
             return optStopped.length();
@@ -154,7 +159,7 @@ contract OperationStore is IOperationStore, Operator {
     function init(bool _autoFinish)
         public
         override
-        onlyGranted
+        onlyRouter
         returns (address)
     {
         // consume
@@ -190,17 +195,15 @@ contract OperationStore is IOperationStore, Operator {
     }
 
     // fail -> recover -> idle
-    //      -> truncate -> x
-    function halt(address _opt) public override onlyGranted {
+    //      -> deallocate -> x
+    function halt(address _opt) public override onlyController {
         Status stat = optStat[_opt];
         if (stat == Status.IDLE) {
             // push to failed queue
             optIdle.remove(_opt);
             optStopped.produce(_opt);
-        } else {
-            // wait for flush
-            optStat[_opt] = Status.STOPPED;
         }
+        optStat[_opt] = Status.STOPPED;
         emit OperationStopped(msg.sender, _opt);
     }
 
@@ -223,19 +226,19 @@ contract OperationStore is IOperationStore, Operator {
                 Queue.STOPPED
             );
         } else {
-            return false;
+            return false; // RUNNING
         }
         return true;
     }
 
     // =========================== FAIL QUEUE OPERATIONS =========================== //
 
-    function recover(address _opt) public override onlyGranted {
+    function recover(address _opt) public override onlyController {
         optStat[_opt] = Status.RECOVERED;
         emit OperationRecovered(msg.sender, _opt);
     }
 
-    function deallocate(address _opt) public override onlyOwner {
+    function deallocate(address _opt) public override onlyController {
         optStat[_opt] = Status.DEALLOCATED;
         emit OperationDeallocated(msg.sender, _opt);
     }
@@ -254,7 +257,7 @@ contract OperationStore is IOperationStore, Operator {
             _queue.consume();
             emit OperationFlushed(msg.sender, opt, Queue.STOPPED, Queue.NULL);
         } else {
-            return false;
+            return false; // STOPPED
         }
 
         return true;
@@ -276,7 +279,11 @@ contract OperationStore is IOperationStore, Operator {
         }
     }
 
-    function flush(Queue _queue, uint256 _amount) public override onlyGranted {
+    function flush(Queue _queue, uint256 _amount)
+        public
+        override
+        onlyController
+    {
         if (_queue == Queue.RUNNING) {
             _flush(optRunning, _amount, flushRunningQueue);
         } else if (_queue == Queue.STOPPED) {
@@ -286,7 +293,7 @@ contract OperationStore is IOperationStore, Operator {
         }
     }
 
-    function flushAll(uint256 _amount) public override onlyGranted {
+    function flushAll(uint256 _amount) public override onlyController {
         flush(Queue.RUNNING, _amount);
         flush(Queue.STOPPED, _amount);
     }
