@@ -50,10 +50,10 @@ async function main() {
     /* ========== curve ========== */
     {
       routes: [
-        routeOf(contracts, "DAI"),
-        routeOf(contracts, "USDC"),
-        routeOf(contracts, "USDT"),
-        routeOf(contracts, "BUSD"),
+        ...routeOf(contracts, "DAI"),
+        ...routeOf(contracts, "USDC"),
+        ...routeOf(contracts, "USDT"),
+        ...routeOf(contracts, "BUSD"),
       ],
     },
     /* ========== uniswap ========== */
