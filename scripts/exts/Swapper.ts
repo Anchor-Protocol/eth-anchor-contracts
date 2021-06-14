@@ -19,66 +19,123 @@ export interface CurveSwapperRoute {
 
 const predefinedRoutes = (
   contracts: Contracts
-): { [symbol: string]: CurveSwapperRoute } => ({
+): { [symbol: string]: CurveSwapperRoute[] } => ({
   // DAI
-  DAI: {
-    from: contracts.DAI,
-    to: contracts.UST,
-    crv: [
-      {
-        pool: contracts.CrvUSTPool,
-        bridge: contracts.DAI,
-        indexes: [1, 0],
-      },
-    ],
-  },
+  DAI: [
+    {
+      from: contracts.DAI,
+      to: contracts.UST,
+      crv: [
+        {
+          pool: contracts.CrvUSTPool,
+          bridge: contracts.DAI,
+          indexes: [1, 0],
+        },
+      ],
+    },
+    {
+      from: contracts.UST,
+      to: contracts.DAI,
+      crv: [
+        {
+          pool: contracts.CrvUSTPool,
+          bridge: contracts.UST,
+          indexes: [0, 1],
+        },
+      ],
+    },
+  ],
   // USDC
-  USDC: {
-    from: contracts.USDC,
-    to: contracts.UST,
-    crv: [
-      {
-        pool: contracts.CrvUSTPool,
-        bridge: contracts.USDC,
-        indexes: [2, 0],
-      },
-    ],
-  },
+  USDC: [
+    {
+      from: contracts.USDC,
+      to: contracts.UST,
+      crv: [
+        {
+          pool: contracts.CrvUSTPool,
+          bridge: contracts.USDC,
+          indexes: [2, 0],
+        },
+      ],
+    },
+    {
+      from: contracts.UST,
+      to: contracts.USDC,
+      crv: [
+        {
+          pool: contracts.CrvUSTPool,
+          bridge: contracts.UST,
+          indexes: [0, 2],
+        },
+      ],
+    },
+  ],
   // USDT
-  USDT: {
-    from: contracts.USDT,
-    to: contracts.UST,
-    crv: [
-      {
-        pool: contracts.CrvUSTPool,
-        bridge: contracts.USDT,
-        indexes: [3, 0],
-      },
-    ],
-  },
+  USDT: [
+    {
+      from: contracts.USDT,
+      to: contracts.UST,
+      crv: [
+        {
+          pool: contracts.CrvUSTPool,
+          bridge: contracts.USDT,
+          indexes: [3, 0],
+        },
+      ],
+    },
+    {
+      from: contracts.UST,
+      to: contracts.USDT,
+      crv: [
+        {
+          pool: contracts.CrvUSTPool,
+          bridge: contracts.UST,
+          indexes: [0, 3],
+        },
+      ],
+    },
+  ],
   // BUSD
-  BUSD: {
-    from: contracts.BUSD,
-    to: contracts.UST,
-    crv: [
-      {
-        pool: contracts.CrvBUSDPool,
-        bridge: contracts.BUSD,
-        indexes: [0, 2],
-      },
-      {
-        pool: contracts.CrvUSTPool,
-        bridge: contracts.USDC,
-        indexes: [2, 0],
-      },
-    ],
-  },
+  BUSD: [
+    {
+      from: contracts.BUSD,
+      to: contracts.UST,
+      crv: [
+        {
+          pool: contracts.CrvBUSDPool,
+          bridge: contracts.BUSD,
+          indexes: [0, 2],
+        },
+        {
+          pool: contracts.CrvUSTPool,
+          bridge: contracts.USDC,
+          indexes: [2, 0],
+        },
+      ],
+    },
+    {
+      from: contracts.UST,
+      to: contracts.BUSD,
+      crv: [
+        {
+          pool: contracts.CrvUSTPool,
+          bridge: contracts.UST,
+          indexes: [0, 2],
+        },
+        {
+          pool: contracts.CrvBUSDPool,
+          bridge: contracts.USDC,
+          indexes: [2, 0],
+        },
+      ],
+    },
+  ],
 });
 
 export function routeOf(
   contracts: Contracts,
   tokenSymbol: string
-): CurveSwapperRoute {
+): CurveSwapperRoute[] {
   return predefinedRoutes(contracts)[tokenSymbol];
 }
 
