@@ -1,14 +1,21 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { BigNumber, Contract } from "ethers";
+import { BigNumber, BigNumberish, Contract } from "ethers";
 import { ethers, network } from "hardhat";
 import { ContractArchive } from "../archive/deployed";
 
-import { CONTRACTS, Contracts } from "./contracts";
+import {
+  CONTRACTS,
+  CONFIRMATION,
+  GAS_PRICE as gasPrice,
+  Contracts,
+} from "./contracts";
 import { Core, deployCore } from "./core";
 import { deployExtension, Extensions, FeederConfig, routeOf } from "./exts";
 import { replaceFeeder } from "./exts/ExchangeRateFeeder";
 import { upgradeV1 } from "./upgrade/v1";
 import { deployExternalContracts, isLocalNetwork } from "./utils";
+
+const { provider } = ethers;
 
 async function deploy(
   contracts: Contracts,
@@ -84,6 +91,35 @@ async function deploy(
   );
 }
 
+async function changeExchangeRate(
+  owner: SignerWithAddress,
+  feeder: Contract,
+  tokens: Contract[],
+  rate: BigNumberish,
+  period: BigNumberish,
+  weight: BigNumberish
+): Promise<void> {
+  let tx;
+
+  for await (const token of tokens) {
+    const symbol = await token.symbol();
+    tx = await feeder
+      .connect(owner)
+      .addToken(token.address, rate, period, weight, {
+        gasPrice,
+      });
+
+    console.log(`${symbol}.addToken ${feeder.address} ${tx.hash}`);
+    await provider.waitForTransaction(tx.hash, CONFIRMATION);
+  }
+
+  tx = await feeder.connect(owner).startUpdate(
+    tokens.map((t) => t.address),
+    { gasPrice }
+  );
+  console.log(`feeder.startUpdate ${feeder.address} ${tx.hash}`);
+}
+
 async function main() {
   const [owner, admin] = await ethers.getSigners();
 
@@ -105,19 +141,28 @@ async function main() {
   exts = await Extensions.fromContracts(ContractArchive.mainnetV2.exts);
 
   tokens = [];
-  tokens.push(await ethers.getContractAt("ERC20", contracts.UST));
+  // tokens.push(await ethers.getContractAt("ERC20", contracts.UST));
   tokens.push(await ethers.getContractAt("ERC20", contracts.DAI));
   tokens.push(await ethers.getContractAt("ERC20", contracts.USDT));
   tokens.push(await ethers.getContractAt("ERC20", contracts.USDC));
   tokens.push(await ethers.getContractAt("ERC20", contracts.BUSD));
 
-  const feeder = await replaceFeeder(
+  await changeExchangeRate(
     owner,
     exts.feeder,
     tokens,
-    Object.values(exts.pools).map((v) => v.pool)
+    "1047537625424102549",
+    "21600",
+    "1000095731939800926"
   );
-  console.log(feeder.address);
+
+  // const feeder = await replaceFeeder(
+  //   owner,
+  //   exts.feeder,
+  //   tokens,
+  //   Object.values(exts.pools).map((v) => v.pool)
+  // );
+  // console.log(feeder.address);
 
   return;
 
