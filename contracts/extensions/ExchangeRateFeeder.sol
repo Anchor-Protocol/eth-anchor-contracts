@@ -66,7 +66,11 @@ contract ExchangeRateFeeder is IExchangeRateFeeder, Ownable {
 
     function startUpdate(address[] memory _tokens) public onlyOwner {
         for (uint256 i = 0; i < _tokens.length; i++) {
-            tokens[_tokens[i]].status = Status.RUNNING;
+            if (tokens[_tokens[i]].status == Status.RUNNING) {
+                update(_tokens[i]);
+            } else {
+                tokens[_tokens[i]].status = Status.RUNNING;
+            }
             tokens[_tokens[i]].lastUpdatedAt = block.timestamp; // reset
         }
     }
@@ -111,7 +115,9 @@ contract ExchangeRateFeeder is IExchangeRateFeeder, Ownable {
         for (uint256 i = 0; i < updateCount; i++) {
             token.exchangeRate = token.exchangeRate.mul(token.weight).div(1e18);
         }
-        token.lastUpdatedAt = block.timestamp;
+        token.lastUpdatedAt = token.lastUpdatedAt.add(
+            updateCount.mul(token.period)
+        );
 
         tokens[_token] = token;
 
