@@ -8,7 +8,7 @@ export const ContractArchive = {
     },
     exts: {
       swapper: "0x7ea5271a0f4EA160934553F4F94EC01F8B3299bD",
-      feeder: "0xd7c4f5903De8A256a1f535AC71CeCe5750d5197a",
+      feeder: "0xB12B8247bD1749CC271c55Bb93f6BD2B485C94A7",
       pools: {
         dai: {
           token: "0x6b175474e89094c44da98b954eedeac495271d0f",

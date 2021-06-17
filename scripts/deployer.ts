@@ -1,3 +1,4 @@
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { BigNumber, Contract } from "ethers";
 import { ethers, network } from "hardhat";
 import { ContractArchive } from "../archive/deployed";
@@ -5,30 +6,23 @@ import { ContractArchive } from "../archive/deployed";
 import { CONTRACTS, Contracts } from "./contracts";
 import { Core, deployCore } from "./core";
 import { deployExtension, Extensions, FeederConfig, routeOf } from "./exts";
+import { replaceFeeder } from "./exts/ExchangeRateFeeder";
 import { upgradeV1 } from "./upgrade/v1";
 import { deployExternalContracts, isLocalNetwork } from "./utils";
 
-async function main() {
-  const [owner, admin] = await ethers.getSigners();
-
-  let contracts: Contracts;
-  let isLocal = isLocalNetwork();
-  if (!isLocal) {
-    contracts = CONTRACTS[network.name];
-  } else {
-    contracts =
-      network.name === "mainnet_fork"
-        ? CONTRACTS["mainnet"]
-        : await deployExternalContracts(owner);
-  }
-
+async function deploy(
+  contracts: Contracts,
+  owner: SignerWithAddress,
+  admin: SignerWithAddress,
+  isLocal: boolean = true
+) {
   // ============================= core
   const core = await deployCore(contracts, owner, admin, isLocal);
   const coreAddrs = JSON.stringify(core.toContracts(), null, 2);
   console.log(`Core contracts deployed. ${coreAddrs}`);
 
   // ============================= extensions
-  const tokens: Contract[] = [];
+  const tokens = [];
   tokens.push(await ethers.getContractAt("ERC20", contracts.DAI));
   tokens.push(await ethers.getContractAt("ERC20", contracts.USDT));
   tokens.push(await ethers.getContractAt("ERC20", contracts.USDC));
@@ -88,6 +82,46 @@ async function main() {
     core.router,
     Object.values(exts.pools).map((v) => v.pool)
   );
+}
+
+async function main() {
+  const [owner, admin] = await ethers.getSigners();
+
+  let contracts: Contracts;
+  let isLocal = isLocalNetwork();
+  if (!isLocal) {
+    contracts = CONTRACTS[network.name];
+  } else {
+    contracts =
+      network.name === "mainnet_fork"
+        ? CONTRACTS["mainnet"]
+        : await deployExternalContracts(owner);
+  }
+
+  let core, exts;
+  let tokens: Contract[] = [];
+
+  core = await Core.fromContracts(ContractArchive.mainnetV2.core);
+  exts = await Extensions.fromContracts(ContractArchive.mainnetV2.exts);
+
+  tokens = [];
+  tokens.push(await ethers.getContractAt("ERC20", contracts.UST));
+  tokens.push(await ethers.getContractAt("ERC20", contracts.DAI));
+  tokens.push(await ethers.getContractAt("ERC20", contracts.USDT));
+  tokens.push(await ethers.getContractAt("ERC20", contracts.USDC));
+  tokens.push(await ethers.getContractAt("ERC20", contracts.BUSD));
+
+  const feeder = await replaceFeeder(
+    owner,
+    exts.feeder,
+    tokens,
+    Object.values(exts.pools).map((v) => v.pool)
+  );
+  console.log(feeder.address);
+
+  return;
+
+  // await deploy(contracts, owner, admin, isLocal);
 }
 
 main().catch(console.error);
