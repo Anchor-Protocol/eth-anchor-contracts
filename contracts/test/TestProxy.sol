@@ -7,12 +7,12 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "hardhat/console.sol";
 
 contract TestProxy is OwnableUpgradeable {
-    function initialize() public {
-        __Ownable_init();
-    }
+  function initialize() public {
+    __Ownable_init();
+  }
 
-    function test() public view onlyOwner {
-        console.log(msg.sender);
-        console.log(tx.origin);
-    }
+  function test() public view onlyOwner {
+    console.log(msg.sender);
+    console.log(tx.origin);
+  }
 }

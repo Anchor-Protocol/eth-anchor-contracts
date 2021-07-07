@@ -24,17 +24,17 @@
 pragma solidity >=0.6.0 <0.8.0;
 
 interface IProxy {
-    function admin() external view returns (address);
+  function admin() external view returns (address);
 
-    function changeAdmin(address newAdmin) external;
+  function changeAdmin(address newAdmin) external;
 
-    function implementation() external view returns (address);
+  function implementation() external view returns (address);
 
-    function upgradeTo(address newImplementation) external;
+  function upgradeTo(address newImplementation) external;
 
-    function upgradeToAndCall(address newImplementation, bytes calldata data)
-        external
-        payable;
+  function upgradeToAndCall(address newImplementation, bytes calldata data)
+    external
+    payable;
 }
 
 /**
@@ -47,70 +47,63 @@ interface IProxy {
  * 1. Reformat and conform to Solidity 0.6 syntax (5/13/20)
  */
 abstract contract Proxy {
-    /**
-     * @dev Fallback function.
-     * Implemented entirely in `_fallback`.
-     */
-    fallback() external payable {
-        _fallback();
+  /**
+   * @dev Fallback function.
+   * Implemented entirely in `_fallback`.
+   */
+  fallback() external payable {
+    _fallback();
+  }
+
+  /**
+   * @return The Address of the implementation.
+   */
+  function _implementation() internal view virtual returns (address);
+
+  /**
+   * @dev Delegates execution to an implementation contract.
+   * This is a low level function that doesn't return to its internal call site.
+   * It will return to the external caller whatever the implementation returns.
+   * @param implementation Address to delegate.
+   */
+  function _delegate(address implementation) internal {
+    assembly {
+      // Copy msg.data. We take full control of memory in this inline assembly
+      // block because it will not return to Solidity code. We overwrite the
+      // Solidity scratch pad at memory position 0.
+      calldatacopy(0, 0, calldatasize())
+
+      // Call the implementation.
+      // out and outsize are 0 because we don't know the size yet.
+      let result := delegatecall(gas(), implementation, 0, calldatasize(), 0, 0)
+
+      // Copy the returned data.
+      returndatacopy(0, 0, returndatasize())
+
+      switch result
+      // delegatecall returns 0 on error.
+      case 0 {
+        revert(0, returndatasize())
+      }
+      default {
+        return(0, returndatasize())
+      }
     }
+  }
 
-    /**
-     * @return The Address of the implementation.
-     */
-    function _implementation() internal view virtual returns (address);
+  /**
+   * @dev Function that is run as the first thing in the fallback function.
+   * Can be redefined in derived contracts to add functionality.
+   * Redefinitions must call super._willFallback().
+   */
+  function _willFallback() internal virtual {}
 
-    /**
-     * @dev Delegates execution to an implementation contract.
-     * This is a low level function that doesn't return to its internal call site.
-     * It will return to the external caller whatever the implementation returns.
-     * @param implementation Address to delegate.
-     */
-    function _delegate(address implementation) internal {
-        assembly {
-            // Copy msg.data. We take full control of memory in this inline assembly
-            // block because it will not return to Solidity code. We overwrite the
-            // Solidity scratch pad at memory position 0.
-            calldatacopy(0, 0, calldatasize())
-
-            // Call the implementation.
-            // out and outsize are 0 because we don't know the size yet.
-            let result := delegatecall(
-                gas(),
-                implementation,
-                0,
-                calldatasize(),
-                0,
-                0
-            )
-
-            // Copy the returned data.
-            returndatacopy(0, 0, returndatasize())
-
-            switch result
-                // delegatecall returns 0 on error.
-                case 0 {
-                    revert(0, returndatasize())
-                }
-                default {
-                    return(0, returndatasize())
-                }
-        }
-    }
-
-    /**
-     * @dev Function that is run as the first thing in the fallback function.
-     * Can be redefined in derived contracts to add functionality.
-     * Redefinitions must call super._willFallback().
-     */
-    function _willFallback() internal virtual {}
-
-    /**
-     * @dev fallback implementation.
-     * Extracted to enable manual triggering.
-     */
-    function _fallback() internal {
-        _willFallback();
-        _delegate(_implementation());
-    }
+  /**
+   * @dev fallback implementation.
+   * Extracted to enable manual triggering.
+   */
+  function _fallback() internal {
+    _willFallback();
+    _delegate(_implementation());
+  }
 }
