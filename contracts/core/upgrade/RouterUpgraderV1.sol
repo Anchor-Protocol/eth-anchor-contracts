@@ -4,8 +4,8 @@ pragma solidity >=0.7.0 <0.8.0;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
+import { Ownable } from "../../utils/Ownable.sol";
 import { Router } from "../Router.sol";
 import { RouterV2 } from "../RouterV2.sol";
 import { IProxy } from "../../upgradeability/Proxy.sol";

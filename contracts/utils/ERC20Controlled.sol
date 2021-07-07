@@ -3,9 +3,10 @@ pragma solidity >=0.7.0 <0.8.0;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Context } from "@openzeppelin/contracts/utils/Context.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
+
+import { Ownable } from "./Ownable.sol";
 
 interface IERC20Controlled is IERC20 {
   function mint(address _to, uint256 _amount) external;

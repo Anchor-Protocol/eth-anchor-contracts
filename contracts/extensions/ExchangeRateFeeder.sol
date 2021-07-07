@@ -2,7 +2,8 @@
 pragma solidity >=0.7.0 <0.8.0;
 
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+
+import { Ownable } from "../utils/Ownable.sol";
 
 interface IExchangeRateFeeder {
   event RateUpdated(
