@@ -8,7 +8,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import { Context } from "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
-import { WrappedAsset } from "../assets/WrappedAsset.sol";
+import { IWrappedAsset } from "../assets/IWrappedAsset.sol";
 import { Operator } from "../utils/Operator.sol";
 import { OperationACL } from "./OperationACL.sol";
 import { ISwapper } from "../swapper/ISwapper.sol";
@@ -88,7 +88,7 @@ interface IOperation {
 contract Operation is Context, OperationACL, IOperation, Initializable {
   using SafeMath for uint256;
   using SafeERC20 for IERC20;
-  using SafeERC20 for WrappedAsset;
+  using SafeERC20 for IWrappedAsset;
 
   Info public DEFAULT_STATUS =
     Info({
@@ -103,8 +103,8 @@ contract Operation is Context, OperationACL, IOperation, Initializable {
     });
   Info public currentStatus;
 
-  WrappedAsset public wUST;
-  WrappedAsset public aUST;
+  IWrappedAsset public wUST;
+  IWrappedAsset public aUST;
 
   bytes32 public override terraAddress;
 
@@ -119,8 +119,8 @@ contract Operation is Context, OperationACL, IOperation, Initializable {
 
     currentStatus = DEFAULT_STATUS;
     terraAddress = _terraAddress;
-    wUST = WrappedAsset(_wUST);
-    aUST = WrappedAsset(_aUST);
+    wUST = IWrappedAsset(_wUST);
+    aUST = IWrappedAsset(_aUST);
 
     router = _router;
     controller = _controller;
@@ -220,7 +220,7 @@ contract Operation is Context, OperationACL, IOperation, Initializable {
     // check status
     require(currentStatus.status == Status.RUNNING, "Operation: idle");
 
-    WrappedAsset output = WrappedAsset(currentStatus.output);
+    IWrappedAsset output = IWrappedAsset(currentStatus.output);
     uint256 amount = output.balanceOf(address(this));
     address operator = currentStatus.operator;
     address swapper = currentStatus.swapper;

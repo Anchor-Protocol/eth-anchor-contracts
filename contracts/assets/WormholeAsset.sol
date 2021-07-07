@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 
 import { IWormhole } from "../interfaces/IWormhole.sol";
 import { IWormholeAssetFactory } from "./WormholeAssetFactory.sol";
-import { WrappedAsset } from "./WrappedAsset.sol";
+import { IWrappedAsset } from "./IWrappedAsset.sol";
 
 interface IWormholeAsset {
   function initalize(
