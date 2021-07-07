@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 // IAnchorAccount.sol: Interface for wrapping around Anchor deposit subcontracts
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity >=0.7.0 <0.8.0;
 
 interface IAnchorAccount {
   function initDepositStable(uint256 amount) external;
