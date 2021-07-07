@@ -47,14 +47,23 @@ abstract contract OperationACL is Context {
     }
 
     function transferOwnership(address _owner) public onlyOwner {
+        require(_owner != address(0x0), "OperationACL: invalid owner address");
         owner = _owner;
     }
 
     function transferRouter(address _router) public onlyOwner {
+        require(
+            _router != address(0x0),
+            "OperationACL: invalid router address"
+        );
         router = _router;
     }
 
     function transferController(address _controller) public onlyOwner {
+        require(
+            _controller != address(0x0),
+            "OperationACL: invalid controller address"
+        );
         controller = _controller;
     }
 }

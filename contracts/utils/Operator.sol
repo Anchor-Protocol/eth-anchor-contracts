@@ -14,6 +14,11 @@ contract Operator is Context {
     }
 
     function setRole(address _owner, address _operator) internal virtual {
+        require(_owner != address(0x0), "Operator: invalid owner address");
+        require(
+            _operator != address(0x0),
+            "Operator: invalid operator address"
+        );
         owner = _owner;
         operator = _operator;
     }
@@ -49,10 +54,15 @@ contract Operator is Context {
     }
 
     function transferOwnership(address _owner) public onlyOwner {
+        require(_owner != address(0x0), "Operator: invalid owner address");
         owner = _owner;
     }
 
     function transferOperator(address _operator) public onlyOwner {
+        require(
+            _operator != address(0x0),
+            "Operator: invalid operator address"
+        );
         operator = _operator;
     }
 }

@@ -41,11 +41,19 @@ contract ConversionPoolV2 is IConversionPool, Context, Operator, Initializable {
     // governance
 
     function setSwapper(address _swapper) public onlyOwner {
+        require(
+            _swapper != address(0x0),
+            "ConversionPoolV2: zero swapper address"
+        );
         swapper = ISwapper(_swapper);
         inputToken.safeApprove(address(swapper), type(uint256).max);
     }
 
     function setOperationRouter(address _optRouter) public onlyOwner {
+        require(
+            _optRouter != address(0x0),
+            "ConversionPoolV2: zero router address"
+        );
         optRouter = _optRouter;
         proxyInputToken.safeApprove(optRouter, type(uint256).max);
         proxyOutputToken.safeApprove(optRouter, type(uint256).max);
@@ -55,6 +63,10 @@ contract ConversionPoolV2 is IConversionPool, Context, Operator, Initializable {
         public
         onlyOwner
     {
+        require(
+            _exchangeRateFeeder != address(0x0),
+            "ConversionPoolV2: zero feeder address"
+        );
         feeder = IExchangeRateFeeder(_exchangeRateFeeder);
     }
 
@@ -68,6 +80,10 @@ contract ConversionPoolV2 is IConversionPool, Context, Operator, Initializable {
 
     // migrate
     function migrate(address _to) public onlyOwner {
+        require(
+            _to != address(0x0),
+            "ConversionPoolV2: zero migration target address"
+        );
         require(
             !(isDepositAllowed && isRedemptionAllowed),
             "ConversionPool: invalid status"

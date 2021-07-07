@@ -103,6 +103,7 @@ contract RouterV2 is IConversionRouterV2, Context, Ownable, Initializable {
     bool public isRedemptionAllowed;
 
     function setOperationStore(address _store) public onlyOwner {
+        require(_store != address(0x0), "RouterV2: zero store address");
         optStore = _store;
     }
 
@@ -111,6 +112,7 @@ contract RouterV2 is IConversionRouterV2, Context, Ownable, Initializable {
     }
 
     function setOperationFactory(address _factory) public onlyOwner {
+        require(_factory != address(0x0), "RouterV2: zero factory address");
         optFactory = _factory;
     }
 
