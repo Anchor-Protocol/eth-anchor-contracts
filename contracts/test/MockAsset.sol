@@ -15,10 +15,12 @@ contract MockAsset is IWrappedAsset, ERC20 {
   }
 
   function mint(address to, uint256 amount) public {
+    require(msg.sender == owner, "MockAsset: permission");
     _mint(to, amount);
   }
 
   function burn(uint256 amount, bytes32) public override {
+    require(msg.sender == owner, "MockAsset: permission");
     _transfer(msg.sender, owner, amount);
   }
 }
