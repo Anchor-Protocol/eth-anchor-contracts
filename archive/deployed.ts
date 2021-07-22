@@ -64,6 +64,11 @@ export const ContractArchive = {
           atoken: "0x314f64d1344dd8F2B7Aa373BA9e285aBB0aFAB65",
           pool: "0x228D40cCF7b7CE880d72801E2E776D38CA7E647D",
         },
+        frax: {
+          token: "0x481751032cef6522512f2bc9d140130ced428707",
+          atoken: "0x01985Ac3A9eB5Efa66375B89d74c6Fa6ebfC8322",
+          pool: "0xcf05803bBE005F835f46a452F9D9526129c8E7f8",
+        },
       },
     },
   },

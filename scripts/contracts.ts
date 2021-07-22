@@ -25,8 +25,10 @@ export const CONTRACTS = {
     USDT: "0xdac17f958d2ee523a2206206994597c13d831ec7",
     USDC: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
     BUSD: "0x4fabb145d64652a948d72533023f6e7a623c7c53",
+    FRAX: "0x853d955acef822db058eb8505911ed77f175b99e",
     CrvUSTPool: "0x890f4e345B1dAED0367A877a1612f86A1f86985f",
     CrvBUSDPool: "0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a",
+    CrvFRAXPool: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
   },
   ropsten: {
     // uniswap
@@ -40,5 +42,6 @@ export const CONTRACTS = {
     USDT: "0x6af27a81ceb61073ccca401ca6b43064f369dc02",
     USDC: "0xe015fd30cce08bc10344d934bdb2292b1ec4bbbd",
     BUSD: "0xaae6df09ae0d322a666edc63e6a69e4b0fab6f5d",
+    FRAX: "0x481751032cef6522512f2bc9d140130ced428707",
   },
 } as { [network: string]: Contracts };
